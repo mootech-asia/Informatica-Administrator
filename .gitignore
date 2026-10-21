@@ -1,4 +1,7 @@
 node_modules/
 data/
-*.log
 outputs/
+*.log
+# fetched by scripts/setup.sh
+/go-admin/
+/go-admin-ui/
