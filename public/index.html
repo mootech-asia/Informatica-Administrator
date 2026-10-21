@@ -1,0 +1,151 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>INFA 監控後台</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <!-- 登入畫面 -->
+  <section id="login-view" class="login-view" hidden>
+    <form id="login-form" class="login-card" autocomplete="on">
+      <div class="brand">
+        <span class="brand-mark">◆</span>
+        <div>
+          <h1>INFA 監控後台</h1>
+          <p class="muted">Infrastructure Monitoring Portal</p>
+        </div>
+      </div>
+      <label>帳號
+        <input name="username" autocomplete="username" required autofocus>
+      </label>
+      <label>密碼
+        <input name="password" type="password" autocomplete="current-password" required>
+      </label>
+      <p id="login-error" class="error" role="alert"></p>
+      <button type="submit" class="btn primary block">登入</button>
+    </form>
+  </section>
+
+  <!-- 主畫面 -->
+  <section id="main-view" hidden>
+    <header class="topbar">
+      <div class="brand small">
+        <span class="brand-mark">◆</span>
+        <h1>INFA 監控後台</h1>
+      </div>
+      <div class="topbar-actions">
+        <span id="whoami" class="muted"></span>
+        <button id="btn-admin" class="btn" hidden>⚙ 權限設置</button>
+        <button id="btn-password" class="btn ghost">修改密碼</button>
+        <button id="btn-logout" class="btn ghost">登出</button>
+      </div>
+    </header>
+    <main>
+      <div class="toolbar">
+        <input id="search" type="search" placeholder="搜尋子項目…" aria-label="搜尋子項目">
+      </div>
+      <div id="sections" class="sections"></div>
+    </main>
+  </section>
+
+  <!-- 權限設置 -->
+  <dialog id="admin-dialog" class="dialog wide">
+    <div class="dialog-head">
+      <h2>權限設置</h2>
+      <button class="btn ghost icon" data-close aria-label="關閉">✕</button>
+    </div>
+    <nav class="tabs">
+      <button class="tab active" data-tab="users">帳號管理</button>
+      <button class="tab" data-tab="items">子項目管理</button>
+    </nav>
+
+    <div class="tab-panel" data-panel="users">
+      <div class="split">
+        <aside class="user-list-wrap">
+          <button id="btn-new-user" class="btn primary block">＋ 新增帳號</button>
+          <ul id="user-list" class="user-list"></ul>
+        </aside>
+        <form id="user-form" class="user-form">
+          <h3 id="user-form-title">新增帳號</h3>
+          <div class="grid2">
+            <label>帳號
+              <input name="username" required maxlength="64" autocomplete="off">
+            </label>
+            <label><span id="pw-label">密碼</span>
+              <input name="password" type="password" minlength="8" autocomplete="new-password">
+            </label>
+            <label>角色
+              <select name="role">
+                <option value="user">一般使用者</option>
+                <option value="admin">管理員（可看全部並管理權限）</option>
+              </select>
+            </label>
+          </div>
+          <fieldset id="perm-fieldset" class="perms">
+            <legend>可檢視的子項目
+              <span class="perm-actions">
+                <button type="button" class="link" data-check="all">全選</button>
+                <button type="button" class="link" data-check="none">全不選</button>
+              </span>
+            </legend>
+            <div id="perm-list" class="perm-list"></div>
+          </fieldset>
+          <p id="user-form-error" class="error" role="alert"></p>
+          <div class="form-actions">
+            <button type="button" id="btn-delete-user" class="btn danger" hidden>刪除帳號</button>
+            <span class="spacer"></span>
+            <button type="submit" class="btn primary">儲存</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <div class="tab-panel" data-panel="items" hidden>
+      <form id="item-form" class="item-form">
+        <input type="hidden" name="id">
+        <select name="section" aria-label="區域"></select>
+        <input name="location" placeholder="Location" maxlength="100">
+        <input name="name" placeholder="Name" required maxlength="100">
+        <input name="url" placeholder="https://… (登入網址)" maxlength="2000">
+        <button type="submit" class="btn primary" id="btn-save-item">新增</button>
+        <button type="button" class="btn ghost" id="btn-cancel-item" hidden>取消</button>
+      </form>
+      <p id="item-form-error" class="error" role="alert"></p>
+      <div class="table-wrap">
+        <table class="admin-table">
+          <thead><tr><th>區域</th><th>Location</th><th>Name</th><th>網址</th><th></th></tr></thead>
+          <tbody id="item-table"></tbody>
+        </table>
+      </div>
+    </div>
+  </dialog>
+
+  <!-- 修改密碼 -->
+  <dialog id="password-dialog" class="dialog">
+    <form id="password-form">
+      <div class="dialog-head">
+        <h2>修改密碼</h2>
+        <button type="button" class="btn ghost icon" data-close aria-label="關閉">✕</button>
+      </div>
+      <label>目前密碼
+        <input name="currentPassword" type="password" required autocomplete="current-password">
+      </label>
+      <label>新密碼（至少 8 字元）
+        <input name="newPassword" type="password" required minlength="8" autocomplete="new-password">
+      </label>
+      <label>確認新密碼
+        <input name="confirm" type="password" required minlength="8" autocomplete="new-password">
+      </label>
+      <p id="password-error" class="error" role="alert"></p>
+      <div class="form-actions"><span class="spacer"></span>
+        <button type="submit" class="btn primary">更新密碼</button>
+      </div>
+    </form>
+  </dialog>
+
+  <div id="toast" class="toast" role="status" hidden></div>
+  <script src="/app.js"></script>
+</body>
+</html>
