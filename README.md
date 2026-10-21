@@ -39,3 +39,13 @@ ADMIN_PASSWORD='請改成強密碼' npm start
 
 - PHIDC、PH Office、PH Studio、SL Office 的子項目（可直接在「權限設置 → 子項目管理」新增）
 - 各子項目的登入網址 / 登入畫面
+
+## 設計交付文件
+
+`docs/design/` 是給開發工程師的交付包，用瀏覽器直接打開 `docs/design/index.html` 即可，不需要架伺服器：
+
+- `index.html`：設計規格（畫面截圖與說明、操作流程、權限規則、資料模型、API、欄位驗證、安全需求、視覺規範、待確認事項）
+- `prototype.html`：可操作原型（資料只存在瀏覽器，帳號 `admin / admin1234`、`demo / demo1234`）
+- `screens/`：各畫面截圖
+
+要給一個公開網址：在 GitHub repo 的 Settings → Pages 把 Source 設為「GitHub Actions」，合併到 `main` 後 `.github/workflows/pages.yml` 會自動部署，網址為 `https://<org>.github.io/<repo>/`。

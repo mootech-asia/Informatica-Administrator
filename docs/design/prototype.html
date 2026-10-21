@@ -1,0 +1,896 @@
+<!doctype html>
+<html lang="zh-Hant"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>INFA 監控後台 — 可操作原型</title>
+<style>
+:root {
+  --bg: #15171c;
+  --panel: #1e2128;
+  --panel-2: #262a33;
+  --border: #333844;
+  --text: #e6e8ec;
+  --muted: #8b92a0;
+  --accent: #3b82f6;
+  --accent-2: #2563eb;
+  --danger: #ef4444;
+  --ok: #22c55e;
+  --radius: 10px;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font: 14px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang TC", "Microsoft JhengHei", sans-serif;
+}
+[hidden] { display: none !important; }
+h1, h2, h3 { margin: 0; font-weight: 600; }
+.muted { color: var(--muted); }
+.error { color: var(--danger); min-height: 1.2em; margin: 8px 0 0; font-size: 13px; }
+
+input, select {
+  width: 100%;
+  padding: 9px 11px;
+  background: var(--bg);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font: inherit;
+}
+input:focus, select:focus { outline: none; border-color: var(--accent); }
+label { display: block; font-size: 13px; color: var(--muted); margin-bottom: 12px; }
+label input, label select { margin-top: 5px; }
+
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  padding: 8px 14px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--panel-2);
+  color: var(--text);
+  font: inherit;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.btn:hover { border-color: var(--muted); }
+.btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+.btn.primary:hover { background: var(--accent-2); }
+.btn.danger { background: transparent; border-color: var(--danger); color: var(--danger); }
+.btn.ghost { background: transparent; }
+.btn.icon { padding: 4px 9px; }
+.btn.block { width: 100%; }
+.link { background: none; border: 0; color: var(--accent); cursor: pointer; font: inherit; padding: 0 4px; }
+.link.danger { color: var(--danger); }
+
+/* ---------- login ---------- */
+.login-view { min-height: 100%; display: grid; place-items: center; padding: 16px; }
+.login-card {
+  width: 100%; max-width: 360px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 28px;
+}
+.brand { display: flex; align-items: center; gap: 12px; margin-bottom: 24px; }
+.brand h1 { font-size: 20px; }
+.brand p { margin: 0; font-size: 12px; }
+.brand-mark { color: var(--accent); font-size: 26px; }
+.brand.small { margin: 0; }
+.brand.small h1 { font-size: 16px; }
+.brand.small .brand-mark { font-size: 18px; }
+
+/* ---------- main ---------- */
+.topbar {
+  position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5;
+  display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap;
+  padding: 12px 20px;
+  background: var(--panel);
+  border-bottom: 1px solid var(--border);
+}
+.topbar-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+main { padding: 20px; max-width: 1400px; margin: 0 auto; }
+.toolbar { margin-bottom: 16px; max-width: 320px; }
+
+.sections {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 16px;
+  align-items: start;
+}
+.section-card {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+.section-card header {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 12px 16px;
+  background: var(--panel-2);
+  border-bottom: 1px solid var(--border);
+}
+.section-card h2 { font-size: 15px; letter-spacing: .3px; }
+.badge { font-size: 12px; color: var(--muted); }
+.item-table { width: 100%; border-collapse: collapse; }
+.item-table th, .item-table td { text-align: left; padding: 8px 16px; border-bottom: 1px solid var(--border); }
+.item-table th { font-size: 12px; color: var(--muted); font-weight: 500; }
+.item-table tr:last-child td { border-bottom: 0; }
+.item-table td.loc { width: 90px; color: var(--muted); }
+.item-link {
+  display: flex; justify-content: space-between; align-items: center;
+  color: var(--text); text-decoration: none;
+}
+.item-link:hover { color: var(--accent); }
+.item-link .arrow { color: var(--muted); font-size: 12px; }
+.item-link.disabled { color: var(--muted); cursor: not-allowed; }
+.empty { padding: 20px 16px; color: var(--muted); font-size: 13px; text-align: center; }
+
+/* ---------- dialogs ---------- */
+.dialog {
+  width: min(480px, calc(100vw - 32px));
+  max-height: calc(100vh - 32px);
+  padding: 20px;
+  background: var(--panel);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+}
+.dialog.wide { width: min(1000px, calc(100vw - 32px)); }
+.dialog::backdrop { background: rgba(0, 0, 0, .6); }
+.dialog-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+.dialog-head h2 { font-size: 18px; }
+
+.tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--border); margin-bottom: 16px; }
+.tab {
+  background: none; border: 0; border-bottom: 2px solid transparent;
+  color: var(--muted); padding: 8px 14px; font: inherit; cursor: pointer;
+}
+.tab.active { color: var(--text); border-bottom-color: var(--accent); }
+
+.split { display: grid; grid-template-columns: 220px 1fr; gap: 20px; }
+.user-list { list-style: none; padding: 0; margin: 12px 0 0; max-height: 60vh; overflow: auto; }
+.user-list li button {
+  width: 100%; text-align: left;
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 9px 10px; margin-bottom: 4px;
+  background: transparent; border: 1px solid transparent; border-radius: 8px;
+  color: var(--text); font: inherit; cursor: pointer;
+}
+.user-list li button:hover { background: var(--panel-2); }
+.user-list li button.active { background: var(--panel-2); border-color: var(--accent); }
+.role-tag { font-size: 11px; padding: 1px 7px; border-radius: 99px; background: var(--border); color: var(--muted); }
+.role-tag.admin { background: rgba(59, 130, 246, .2); color: var(--accent); }
+
+.user-form h3 { font-size: 15px; margin-bottom: 14px; }
+.grid2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 0 14px; }
+.perms { border: 1px solid var(--border); border-radius: var(--radius); padding: 10px 14px 14px; margin: 0; }
+.perms:disabled { opacity: .5; }
+.perms legend { padding: 0 6px; color: var(--muted); font-size: 13px; }
+.perm-actions { margin-left: 8px; }
+.perm-list {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 14px;
+  max-height: 45vh; overflow: auto;
+}
+.perm-group h4 { margin: 0 0 6px; font-size: 13px; display: flex; align-items: center; gap: 6px; }
+.perm-group .check { margin: 0; padding: 3px 0; color: var(--text); display: flex; align-items: center; gap: 8px; font-size: 13px; }
+.perm-group input[type=checkbox] { width: auto; margin: 0; accent-color: var(--accent); }
+.perm-group .none { color: var(--muted); font-size: 12px; }
+
+.form-actions { display: flex; gap: 8px; align-items: center; margin-top: 14px; }
+.spacer { flex: 1; }
+
+.item-form { display: grid; grid-template-columns: 130px 110px 1fr 2fr auto auto; gap: 8px; }
+.table-wrap { max-height: 55vh; overflow: auto; border: 1px solid var(--border); border-radius: var(--radius); }
+.admin-table { width: 100%; border-collapse: collapse; }
+.admin-table th, .admin-table td { padding: 8px 12px; border-bottom: 1px solid var(--border); text-align: left; font-size: 13px; }
+.admin-table th { position: sticky; top: 0; background: var(--panel-2); color: var(--muted); font-weight: 500; }
+.admin-table td.url { max-width: 280px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--muted); }
+.admin-table td.actions { white-space: nowrap; text-align: right; }
+
+.toast {
+  position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
+  background: var(--panel-2); border: 1px solid var(--border); border-left: 3px solid var(--ok);
+  padding: 10px 16px; border-radius: 8px; z-index: 100;
+}
+
+@media (max-width: 760px) {
+  .split { grid-template-columns: 1fr; }
+  .user-list { max-height: 160px; }
+  .item-form { grid-template-columns: 1fr 1fr; }
+  .item-form input[name=url] { grid-column: 1 / -1; }
+  main, .topbar { padding-left: 16px; padding-right: 16px; }
+}
+
+.demo-bar { display:flex; flex-wrap:wrap; gap:6px 14px; align-items:center; justify-content:center;
+  padding:8px 16px; background:var(--panel-2); border-bottom:1px solid var(--border); font-size:13px; color:var(--muted); }
+.confirm-msg { white-space: pre-line; margin: 0 0 16px; }
+.demo-bar b { color:var(--text); font-weight:600; }
+body::before { content:""; position:fixed; inset:0 0 auto; height:env(safe-area-inset-top,0px); z-index:10; background:var(--panel); }
+</style></head><body>
+<div class="demo-bar"><span>可操作原型（資料只存在你的瀏覽器）· <a class="link" href="index.html">← 回設計規格</a></span>
+  <span>管理員 <b>admin / admin1234</b></span><span>一般帳號 <b>demo / demo1234</b></span>
+  <button class="link" type="button" id="btn-reset-demo">重置展示資料</button></div>
+
+  <!-- 登入畫面 -->
+  <section id="login-view" class="login-view" hidden>
+    <form id="login-form" class="login-card" autocomplete="on">
+      <div class="brand">
+        <span class="brand-mark">◆</span>
+        <div>
+          <h1>INFA 監控後台</h1>
+          <p class="muted">Infrastructure Monitoring Portal</p>
+        </div>
+      </div>
+      <label>帳號
+        <input name="username" autocomplete="username" required autofocus>
+      </label>
+      <label>密碼
+        <input name="password" type="password" autocomplete="current-password" required>
+      </label>
+      <p id="login-error" class="error" role="alert"></p>
+      <button type="submit" class="btn primary block">登入</button>
+    </form>
+  </section>
+
+  <!-- 主畫面 -->
+  <section id="main-view" hidden>
+    <header class="topbar">
+      <div class="brand small">
+        <span class="brand-mark">◆</span>
+        <h1>INFA 監控後台</h1>
+      </div>
+      <div class="topbar-actions">
+        <span id="whoami" class="muted"></span>
+        <button id="btn-admin" class="btn" hidden>⚙ 權限設置</button>
+        <button id="btn-password" class="btn ghost">修改密碼</button>
+        <button id="btn-logout" class="btn ghost">登出</button>
+      </div>
+    </header>
+    <main>
+      <div class="toolbar">
+        <input id="search" type="search" placeholder="搜尋子項目…" aria-label="搜尋子項目">
+      </div>
+      <div id="sections" class="sections"></div>
+    </main>
+  </section>
+
+  <!-- 權限設置 -->
+  <dialog id="admin-dialog" class="dialog wide">
+    <div class="dialog-head">
+      <h2>權限設置</h2>
+      <button class="btn ghost icon" data-close aria-label="關閉">✕</button>
+    </div>
+    <nav class="tabs">
+      <button class="tab active" data-tab="users">帳號管理</button>
+      <button class="tab" data-tab="items">子項目管理</button>
+    </nav>
+
+    <div class="tab-panel" data-panel="users">
+      <div class="split">
+        <aside class="user-list-wrap">
+          <button id="btn-new-user" class="btn primary block">＋ 新增帳號</button>
+          <ul id="user-list" class="user-list"></ul>
+        </aside>
+        <form id="user-form" class="user-form">
+          <h3 id="user-form-title">新增帳號</h3>
+          <div class="grid2">
+            <label>帳號
+              <input name="username" required maxlength="64" autocomplete="off">
+            </label>
+            <label><span id="pw-label">密碼</span>
+              <input name="password" type="password" minlength="8" autocomplete="new-password">
+            </label>
+            <label>角色
+              <select name="role">
+                <option value="user">一般使用者</option>
+                <option value="admin">管理員（可看全部並管理權限）</option>
+              </select>
+            </label>
+          </div>
+          <fieldset id="perm-fieldset" class="perms">
+            <legend>可檢視的子項目
+              <span class="perm-actions">
+                <button type="button" class="link" data-check="all">全選</button>
+                <button type="button" class="link" data-check="none">全不選</button>
+              </span>
+            </legend>
+            <div id="perm-list" class="perm-list"></div>
+          </fieldset>
+          <p id="user-form-error" class="error" role="alert"></p>
+          <div class="form-actions">
+            <button type="button" id="btn-delete-user" class="btn danger" hidden>刪除帳號</button>
+            <span class="spacer"></span>
+            <button type="submit" class="btn primary">儲存</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <div class="tab-panel" data-panel="items" hidden>
+      <form id="item-form" class="item-form">
+        <input type="hidden" name="id">
+        <select name="section" aria-label="區域"></select>
+        <input name="location" placeholder="Location" maxlength="100">
+        <input name="name" placeholder="Name" required maxlength="100">
+        <input name="url" placeholder="https://… (登入網址)" maxlength="2000">
+        <button type="submit" class="btn primary" id="btn-save-item">新增</button>
+        <button type="button" class="btn ghost" id="btn-cancel-item" hidden>取消</button>
+      </form>
+      <p id="item-form-error" class="error" role="alert"></p>
+      <div class="table-wrap">
+        <table class="admin-table">
+          <thead><tr><th>區域</th><th>Location</th><th>Name</th><th>網址</th><th></th></tr></thead>
+          <tbody id="item-table"></tbody>
+        </table>
+      </div>
+    </div>
+  </dialog>
+
+  <!-- 修改密碼 -->
+  <dialog id="password-dialog" class="dialog">
+    <form id="password-form">
+      <div class="dialog-head">
+        <h2>修改密碼</h2>
+        <button type="button" class="btn ghost icon" data-close aria-label="關閉">✕</button>
+      </div>
+      <label>目前密碼
+        <input name="currentPassword" type="password" required autocomplete="current-password">
+      </label>
+      <label>新密碼（至少 8 字元）
+        <input name="newPassword" type="password" required minlength="8" autocomplete="new-password">
+      </label>
+      <label>確認新密碼
+        <input name="confirm" type="password" required minlength="8" autocomplete="new-password">
+      </label>
+      <p id="password-error" class="error" role="alert"></p>
+      <div class="form-actions"><span class="spacer"></span>
+        <button type="submit" class="btn primary">更新密碼</button>
+      </div>
+    </form>
+  </dialog>
+
+  <div id="toast" class="toast" role="status" hidden></div>
+  <dialog id="confirm-dialog" class="dialog"><form method="dialog">
+  <p id="confirm-msg" class="confirm-msg"></p>
+  <div class="form-actions"><span class="spacer"></span>
+    <button class="btn ghost" value="cancel">取消</button>
+    <button class="btn danger" value="ok">確定刪除</button></div></form></dialog>
+<script>
+'use strict';
+// Demo only: emulates server.js in the browser so the UI can be previewed without a backend.
+(() => {
+  const SECTIONS = ['TWIDC', 'JPIDC', 'PHIDC', 'PH Office', 'PH Studio', 'SL Office'];
+  const KEY = 'infa-demo-db-v1';
+  const id = () => Math.random().toString(16).slice(2, 10);
+  const seed = () => {
+    const items = [
+      ...['Cacti', 'Zabbix', 'WAN PRTG', 'LAN PRTG', 'Ext PRTG', 'Graylog', 'Graylog2',
+        'Looking glass', 'Streaming wall', 'haproxystat', 'NTOP', 'Wazuh']
+        .map(name => ({ section: 'TWIDC', location: 'TW', name })),
+      ...['Cacti', 'Zabbix', 'PRTG', 'Graylog'].map(name => ({ section: 'JPIDC', location: 'JP', name })),
+    ].map((it, i) => ({ id: id(), ...it, url: '', order: i }));
+    const tw = items.filter(i => i.section === 'TWIDC').slice(0, 4).map(i => i.id);
+    return {
+      users: [
+        { id: id(), username: 'admin', password: 'admin1234', role: 'admin', items: [], createdAt: new Date().toISOString() },
+        { id: id(), username: 'demo', password: 'demo1234', role: 'user', items: tw, createdAt: new Date().toISOString() },
+      ],
+      items,
+      session: null,
+    };
+  };
+  let db;
+  try { db = JSON.parse(localStorage.getItem(KEY)); } catch { db = null; }
+  if (!db) db = seed();
+  const save = () => { try { localStorage.setItem(KEY, JSON.stringify(db)); } catch {} };
+  window.resetDemo = () => { db = seed(); save(); location.reload(); };
+
+  class E extends Error { constructor(s, m) { super(m); this.s = s; } }
+  const pub = u => ({ id: u.id, username: u.username, role: u.role, items: u.items, createdAt: u.createdAt });
+  const s = (v, f, max = 200, req = true) => {
+    v = typeof v === 'string' ? v.trim() : '';
+    if (req && !v) throw new E(400, `${f} 不可空白`);
+    if (v.length > max) throw new E(400, `${f} 過長`);
+    return v;
+  };
+  const pw = v => { if (typeof v !== 'string' || v.length < 8) throw new E(400, '密碼至少需 8 個字元'); return v; };
+  const ids = v => { const k = new Set(db.items.map(i => i.id)); return [...new Set((v || []).filter(x => k.has(x)))]; };
+  const url = v => { v = s(v, '網址', 2000, false); if (v && !/^https?:\/\//i.test(v)) throw new E(400, '網址必須以 http:// 或 https:// 開頭'); return v; };
+  const readItem = b => {
+    const section = s(b.section, '區域');
+    if (!SECTIONS.includes(section)) throw new E(400, '區域不存在');
+    return { section, location: s(b.location, 'Location', 100, false), name: s(b.name, 'Name', 100), url: url(b.url) };
+  };
+
+  function route(method, p, b) {
+    if (p === '/api/login' && method === 'POST') {
+      const u = db.users.find(x => x.username.toLowerCase() === String(b.username || '').trim().toLowerCase());
+      if (!u || u.password !== b.password) throw new E(401, '帳號或密碼錯誤');
+      db.session = u.id; save();
+      return { user: pub(u) };
+    }
+    if (p === '/api/logout') { db.session = null; save(); return { ok: true }; }
+    const me = db.users.find(u => u.id === db.session);
+    if (!me) throw new E(401, '請先登入');
+    if (p === '/api/me') return { user: pub(me), sections: SECTIONS };
+    if (p === '/api/items') {
+      const list = me.role === 'admin' ? db.items : db.items.filter(i => me.items.includes(i.id));
+      return { sections: SECTIONS, items: [...list].sort((a, c) => a.order - c.order) };
+    }
+    if (p === '/api/me/password') {
+      if (b.currentPassword !== me.password) throw new E(400, '目前密碼不正確');
+      me.password = pw(b.newPassword); save(); return { ok: true };
+    }
+    if (me.role !== 'admin') throw new E(403, '權限不足');
+    const [, , , res, rid] = p.split('/');
+    if (res === 'users') {
+      if (!rid && method === 'GET') return { users: db.users.map(pub) };
+      if (!rid && method === 'POST') {
+        const username = s(b.username, '帳號', 64);
+        if (!/^[A-Za-z0-9._@-]+$/.test(username)) throw new E(400, '帳號僅可使用英數字及 . _ @ -');
+        if (db.users.some(u => u.username.toLowerCase() === username.toLowerCase())) throw new E(409, '帳號已存在');
+        const u = { id: id(), username, password: pw(b.password), role: b.role === 'admin' ? 'admin' : 'user', items: ids(b.items), createdAt: new Date().toISOString() };
+        db.users.push(u); save(); return { user: pub(u) };
+      }
+      const u = db.users.find(x => x.id === rid);
+      if (!u) throw new E(404, '找不到帳號');
+      if (method === 'PUT') {
+        if (b.role !== undefined) {
+          const role = b.role === 'admin' ? 'admin' : 'user';
+          if (u.role === 'admin' && role !== 'admin' && db.users.filter(x => x.role === 'admin').length === 1) throw new E(400, '至少需保留一位管理員');
+          u.role = role;
+        }
+        if (b.items !== undefined) u.items = ids(b.items);
+        if (b.password) u.password = pw(b.password);
+        save(); return { user: pub(u) };
+      }
+      if (method === 'DELETE') {
+        if (u.id === me.id) throw new E(400, '不可刪除自己的帳號');
+        db.users = db.users.filter(x => x.id !== u.id); save(); return { ok: true };
+      }
+    }
+    if (res === 'items') {
+      if (!rid && method === 'POST') {
+        const order = db.items.reduce((m, i) => Math.max(m, i.order), -1) + 1;
+        const it = { id: id(), ...readItem(b), order };
+        db.items.push(it); save(); return { item: it };
+      }
+      const it = db.items.find(i => i.id === rid);
+      if (!it) throw new E(404, '找不到子項目');
+      if (method === 'PUT') { Object.assign(it, readItem(b)); save(); return { item: it }; }
+      if (method === 'DELETE') {
+        db.items = db.items.filter(i => i.id !== rid);
+        db.users.forEach(u => { u.items = u.items.filter(x => x !== rid); });
+        save(); return { ok: true };
+      }
+    }
+    throw new E(404, 'Not found');
+  }
+
+  window.fetch = async (path, opts = {}) => {
+    let status = 200, body;
+    try { body = route(opts.method || 'GET', path, opts.body ? JSON.parse(opts.body) : {}); }
+    catch (e) { status = e.s || 500; body = { error: e.message }; }
+    return new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } });
+  };
+
+  // The artifact viewer disables window.confirm, so use an in-page dialog instead.
+  window.askConfirm = msg => new Promise(resolve => {
+    const d = document.getElementById('confirm-dialog');
+    document.getElementById('confirm-msg').textContent = msg;
+    d.onclose = () => resolve(d.returnValue === 'ok');
+    d.returnValue = '';
+    d.showModal();
+  });
+})();
+
+document.getElementById('btn-reset-demo').addEventListener('click', () => resetDemo());
+</script>
+<script>
+'use strict';
+
+const $ = sel => document.querySelector(sel);
+
+const state = {
+  me: null,
+  sections: [],
+  items: [],          // items visible to the current user
+  users: [],          // admin only
+  selectedUserId: null,
+};
+
+// ---------- helpers ----------
+
+async function api(path, { method = 'GET', body } = {}) {
+  const res = await fetch(path, {
+    method,
+    headers: body ? { 'Content-Type': 'application/json' } : {},
+    body: body ? JSON.stringify(body) : undefined,
+    credentials: 'same-origin',
+  });
+  const data = await res.json().catch(() => ({}));
+  if (res.status === 401 && path !== '/api/login') {
+    showLogin();
+    throw new Error(data.error || '請先登入');
+  }
+  if (!res.ok) throw new Error(data.error || `錯誤 ${res.status}`);
+  return data;
+}
+
+function el(tag, attrs = {}, ...children) {
+  const node = document.createElement(tag);
+  for (const [k, v] of Object.entries(attrs)) {
+    if (v === undefined || v === null || v === false) continue;
+    if (k === 'class') node.className = v;
+    else if (k.startsWith('on')) node.addEventListener(k.slice(2), v);
+    else if (k in node && typeof v !== 'string') node[k] = v;
+    else node.setAttribute(k, v === true ? '' : v);
+  }
+  for (const c of children.flat()) {
+    if (c === null || c === undefined || c === false) continue;
+    node.append(c instanceof Node ? c : document.createTextNode(String(c)));
+  }
+  return node;
+}
+
+let toastTimer;
+function toast(msg) {
+  const t = $('#toast');
+  t.textContent = msg;
+  t.hidden = false;
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => { t.hidden = true; }, 2500);
+}
+
+function groupBySection(items) {
+  const map = new Map(state.sections.map(s => [s, []]));
+  for (const it of items) (map.get(it.section) || map.set(it.section, []).get(it.section)).push(it);
+  return map;
+}
+
+// ---------- views ----------
+
+function showLogin() {
+  state.me = null;
+  $('#main-view').hidden = true;
+  $('#login-view').hidden = false;
+  document.querySelectorAll('dialog[open]').forEach(d => d.close());
+  $('#login-form [name=username]').focus();
+}
+
+async function showMain() {
+  $('#login-view').hidden = true;
+  $('#main-view').hidden = false;
+  $('#whoami').textContent = `${state.me.username}${state.me.role === 'admin' ? '（管理員）' : ''}`;
+  $('#btn-admin').hidden = state.me.role !== 'admin';
+  await loadItems();
+}
+
+async function loadItems() {
+  const data = await api('/api/items');
+  state.sections = data.sections;
+  state.items = data.items;
+  renderSections();
+}
+
+function renderSections() {
+  const q = $('#search').value.trim().toLowerCase();
+  const isAdmin = state.me.role === 'admin';
+  const container = $('#sections');
+  container.replaceChildren();
+
+  const groups = groupBySection(state.items);
+  let shown = 0;
+  for (const [section, all] of groups) {
+    const items = q
+      ? all.filter(i => `${i.name} ${i.location} ${section}`.toLowerCase().includes(q))
+      : all;
+    // Regular users only see sections they have something in.
+    if (!isAdmin && all.length === 0) continue;
+    if (q && items.length === 0) continue;
+    shown++;
+
+    const body = items.length
+      ? el('table', { class: 'item-table' },
+          el('thead', {}, el('tr', {}, el('th', {}, 'Location'), el('th', {}, 'Name'))),
+          el('tbody', {}, items.map(it => el('tr', {},
+            el('td', { class: 'loc' }, it.location || '—'),
+            el('td', {}, it.url
+              ? el('a', { class: 'item-link', href: it.url, target: '_blank', rel: 'noopener noreferrer' },
+                  it.name, el('span', { class: 'arrow' }, '↗'))
+              : el('span', { class: 'item-link disabled', title: '尚未設定網址' },
+                  it.name, el('span', { class: 'arrow' }, '未設定'))),
+          ))))
+      : el('div', { class: 'empty' }, '尚無子項目');
+
+    container.append(el('section', { class: 'section-card' },
+      el('header', {}, el('h2', {}, section), el('span', { class: 'badge' }, `${items.length} 項`)),
+      body));
+  }
+  if (!shown) {
+    container.append(el('div', { class: 'empty' },
+      q ? '找不到符合的子項目' : '目前沒有可檢視的子項目，請聯絡管理員開通權限'));
+  }
+}
+
+// ---------- login / logout / password ----------
+
+$('#login-form').addEventListener('submit', async e => {
+  e.preventDefault();
+  const f = e.target;
+  $('#login-error').textContent = '';
+  try {
+    const { user } = await api('/api/login', {
+      method: 'POST',
+      body: { username: f.username.value, password: f.password.value },
+    });
+    state.me = user;
+    f.reset();
+    await showMain();
+  } catch (err) {
+    $('#login-error').textContent = err.message;
+  }
+});
+
+$('#btn-logout').addEventListener('click', async () => {
+  await api('/api/logout', { method: 'POST' }).catch(() => {});
+  showLogin();
+});
+
+$('#btn-password').addEventListener('click', () => {
+  $('#password-form').reset();
+  $('#password-error').textContent = '';
+  $('#password-dialog').showModal();
+});
+
+$('#password-form').addEventListener('submit', async e => {
+  e.preventDefault();
+  const f = e.target;
+  if (f.newPassword.value !== f.confirm.value) {
+    $('#password-error').textContent = '兩次輸入的新密碼不一致';
+    return;
+  }
+  try {
+    await api('/api/me/password', {
+      method: 'POST',
+      body: { currentPassword: f.currentPassword.value, newPassword: f.newPassword.value },
+    });
+    $('#password-dialog').close();
+    toast('密碼已更新');
+  } catch (err) {
+    $('#password-error').textContent = err.message;
+  }
+});
+
+$('#search').addEventListener('input', renderSections);
+
+document.querySelectorAll('dialog [data-close]').forEach(b =>
+  b.addEventListener('click', () => b.closest('dialog').close()));
+
+// ---------- admin: dialog & tabs ----------
+
+$('#btn-admin').addEventListener('click', async () => {
+  await refreshAdmin();
+  selectUser(state.selectedUserId && state.users.some(u => u.id === state.selectedUserId)
+    ? state.selectedUserId : null);
+  resetItemForm();
+  $('#admin-dialog').showModal();
+});
+
+document.querySelectorAll('.tab').forEach(tab => tab.addEventListener('click', () => {
+  document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t === tab));
+  document.querySelectorAll('.tab-panel').forEach(p => { p.hidden = p.dataset.panel !== tab.dataset.tab; });
+}));
+
+$('#admin-dialog').addEventListener('close', () => loadItems().catch(() => {}));
+
+async function refreshAdmin() {
+  const [{ users }, { items, sections }] = await Promise.all([api('/api/admin/users'), api('/api/items')]);
+  state.users = users;
+  state.items = items;
+  state.sections = sections;
+  renderUserList();
+  renderItemTable();
+}
+
+// ---------- admin: users ----------
+
+function renderUserList() {
+  $('#user-list').replaceChildren(...state.users.map(u => el('li', {},
+    el('button', {
+      type: 'button',
+      class: u.id === state.selectedUserId ? 'active' : '',
+      onclick: () => selectUser(u.id),
+    },
+      el('span', {}, u.username),
+      el('span', { class: `role-tag ${u.role}` }, u.role === 'admin' ? '管理員' : `${u.items.length} 項`)),
+  )));
+}
+
+function renderPermList(checkedIds) {
+  const checked = new Set(checkedIds);
+  const groups = groupBySection(state.items);
+  $('#perm-list').replaceChildren(...[...groups].map(([section, items]) => {
+    const boxes = items.map(it => el('input', {
+      type: 'checkbox', value: it.id, checked: checked.has(it.id), onchange: syncGroupBoxes,
+    }));
+    const groupBox = el('input', {
+      type: 'checkbox',
+      disabled: items.length === 0,
+      onchange: e => { boxes.forEach(b => { b.checked = e.target.checked; }); },
+    });
+    const group = el('div', { class: 'perm-group' },
+      el('h4', {}, el('label', { class: 'check' }, groupBox, section)),
+      items.length
+        ? items.map((it, i) => el('label', { class: 'check' }, boxes[i],
+            it.location ? `${it.name}（${it.location}）` : it.name))
+        : el('div', { class: 'none' }, '尚無子項目'));
+    group._sync = () => {
+      const n = boxes.filter(b => b.checked).length;
+      groupBox.checked = n > 0 && n === boxes.length;
+      groupBox.indeterminate = n > 0 && n < boxes.length;
+    };
+    group._sync();
+    return group;
+  }));
+}
+
+function syncGroupBoxes() {
+  document.querySelectorAll('#perm-list .perm-group').forEach(g => g._sync());
+}
+
+document.querySelectorAll('[data-check]').forEach(b => b.addEventListener('click', () => {
+  const on = b.dataset.check === 'all';
+  document.querySelectorAll('#perm-list input[type=checkbox]:not(:disabled)').forEach(c => { c.checked = on; });
+  syncGroupBoxes();
+}));
+
+function selectUser(id) {
+  state.selectedUserId = id;
+  const u = state.users.find(x => x.id === id);
+  const f = $('#user-form');
+  f.reset();
+  $('#user-form-error').textContent = '';
+  $('#user-form-title').textContent = u ? `編輯帳號：${u.username}` : '新增帳號';
+  $('#pw-label').textContent = u ? '重設密碼（留空則不變）' : '密碼（至少 8 字元）';
+  f.username.value = u ? u.username : '';
+  f.username.readOnly = !!u;
+  f.password.required = !u;
+  f.role.value = u ? u.role : 'user';
+  $('#btn-delete-user').hidden = !u || u.id === state.me.id;
+  renderPermList(u ? u.items : []);
+  updatePermDisabled();
+  renderUserList();
+}
+
+function updatePermDisabled() {
+  const isAdminRole = $('#user-form').role.value === 'admin';
+  $('#perm-fieldset').disabled = isAdminRole;
+  $('#perm-fieldset').title = isAdminRole ? '管理員可檢視所有子項目' : '';
+}
+
+$('#user-form').role.addEventListener('change', updatePermDisabled);
+$('#btn-new-user').addEventListener('click', () => { selectUser(null); $('#user-form').username.focus(); });
+
+$('#user-form').addEventListener('submit', async e => {
+  e.preventDefault();
+  const f = e.target;
+  const items = [...document.querySelectorAll('#perm-list input[value]:checked')].map(c => c.value);
+  const body = { role: f.role.value, items };
+  if (f.password.value) body.password = f.password.value;
+  $('#user-form-error').textContent = '';
+  try {
+    let user;
+    if (state.selectedUserId) {
+      ({ user } = await api(`/api/admin/users/${state.selectedUserId}`, { method: 'PUT', body }));
+    } else {
+      ({ user } = await api('/api/admin/users', { method: 'POST', body: { ...body, username: f.username.value } }));
+    }
+    await refreshAdmin();
+    if (user.id === state.me.id) state.me = user;
+    selectUser(user.id);
+    toast('帳號已儲存');
+  } catch (err) {
+    $('#user-form-error').textContent = err.message;
+  }
+});
+
+$('#btn-delete-user').addEventListener('click', async () => {
+  const u = state.users.find(x => x.id === state.selectedUserId);
+  if (!u || !await askConfirm(`確定要刪除帳號「${u.username}」？`)) return;
+  try {
+    await api(`/api/admin/users/${u.id}`, { method: 'DELETE' });
+    await refreshAdmin();
+    selectUser(null);
+    toast('帳號已刪除');
+  } catch (err) {
+    $('#user-form-error').textContent = err.message;
+  }
+});
+
+// ---------- admin: items ----------
+
+function renderItemTable() {
+  const sel = $('#item-form').section;
+  const current = sel.value;
+  sel.replaceChildren(...state.sections.map(s => el('option', { value: s }, s)));
+  if (current) sel.value = current;
+
+  const rows = [...groupBySection(state.items)].flatMap(([, items]) => items);
+  $('#item-table').replaceChildren(...(rows.length ? rows.map(it => el('tr', {},
+    el('td', {}, it.section),
+    el('td', {}, it.location || '—'),
+    el('td', {}, it.name),
+    el('td', { class: 'url', title: it.url }, it.url || '（未設定）'),
+    el('td', { class: 'actions' },
+      el('button', { class: 'link', type: 'button', onclick: () => editItem(it) }, '編輯'),
+      el('button', { class: 'link danger', type: 'button', onclick: () => deleteItem(it) }, '刪除')),
+  )) : [el('tr', {}, el('td', { colspan: 5, class: 'empty' }, '尚無子項目'))]));
+}
+
+function resetItemForm() {
+  const f = $('#item-form');
+  const section = f.section.value;
+  f.reset();
+  f.id.value = '';
+  if (section) f.section.value = section;
+  $('#btn-save-item').textContent = '新增';
+  $('#btn-cancel-item').hidden = true;
+  $('#item-form-error').textContent = '';
+}
+
+function editItem(it) {
+  const f = $('#item-form');
+  f.id.value = it.id;
+  f.section.value = it.section;
+  f.location.value = it.location;
+  f.name.value = it.name;
+  f.url.value = it.url;
+  $('#btn-save-item').textContent = '儲存';
+  $('#btn-cancel-item').hidden = false;
+  f.name.focus();
+}
+
+async function deleteItem(it) {
+  if (!await askConfirm(`確定要刪除「${it.section} / ${it.name}」？\n所有帳號對此子項目的權限也會一併移除。`)) return;
+  try {
+    await api(`/api/admin/items/${it.id}`, { method: 'DELETE' });
+    await refreshAdmin();
+    resetItemForm();
+    toast('子項目已刪除');
+  } catch (err) {
+    $('#item-form-error').textContent = err.message;
+  }
+}
+
+$('#btn-cancel-item').addEventListener('click', resetItemForm);
+
+$('#item-form').addEventListener('submit', async e => {
+  e.preventDefault();
+  const f = e.target;
+  const body = { section: f.section.value, location: f.location.value, name: f.name.value, url: f.url.value };
+  try {
+    if (f.id.value) await api(`/api/admin/items/${f.id.value}`, { method: 'PUT', body });
+    else await api('/api/admin/items', { method: 'POST', body });
+    await refreshAdmin();
+    resetItemForm();
+    toast('子項目已儲存');
+  } catch (err) {
+    $('#item-form-error').textContent = err.message;
+  }
+});
+
+// ---------- boot ----------
+
+(async () => {
+  try {
+    const { user } = await api('/api/me');
+    state.me = user;
+    await showMain();
+  } catch {
+    showLogin();
+  }
+})();
+</script>
+</body></html>
