@@ -51,7 +51,7 @@ go-admin 的權限是「帳號 → 一個角色 → 角色勾選的選單」。�
 |---|---|
 | `src/views/dashboard/index.vue` | 首頁換成六區卡片（原本是假的銷售圖表） |
 | `src/views/infa/region/index.vue` | 區域目錄的容器頁 |
-| `src/views/infa/link/index.vue` | 子項目還沒設定網址時的提示頁 |
+| `src/views/infa/link/index.vue`、`previews.ts`、`src/assets/infa-login/` | 子項目還沒設定網址時的頁面：顯示該系統登入畫面的截圖預覽 |
 | `src/lang/{zh-CN,en-US}/infa.ts` | 以上頁面的文字 |
 | `src/App.vue` | 移除上游內建的百度統計追蹤碼 |
 | `src/settings.js`、`src/utils/get-page-title.js`、`index.html`、`src/views/login/index.vue` | 瀏覽器分頁標題固定為英文「INFA Monitoring Portal」 |
@@ -91,7 +91,7 @@ pnpm dev                                           # http://localhost:9527
 ## 7. 還沒有的資料
 
 - PHIDC、PH Office、PH Studio、SL Office 的子項目清單（目前是空的區域）。
-- 每個子項目的網址／登入畫面。需求方之後會提供。
+- 每個子項目的網址（登入畫面截圖已收到，見 `previews.ts`；還缺 TWIDC Wazuh 與 JPIDC PRTG 的截圖）。Looking glass、Streaming wall、haproxystat 沒有登入畫面。
 
 拿到後直接在「選單管理」新增或修改即可，不需要改程式。若要讓新環境一開始就有，也可以加進 `infa/backend/1792000000000_infa_menu.go` 的 `infaRegions`。
 
@@ -107,7 +107,7 @@ pnpm dev                                           # http://localhost:9527
 
 ```bash
 cd go-admin-ui
-git add -N .env.demo src/demo src/lang/*/infa.ts src/views/infa
+git add -N .env.demo src/demo src/lang/*/infa.ts src/views/infa src/assets/infa-login
 git diff --binary > ../infa/frontend.patch
 git reset
 ```
