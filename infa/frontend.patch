@@ -13,6 +13,19 @@ index 0000000..b4b14f0
 +VUE_APP_GA_ID = ''
 +VITE_BASE = './'
 +SASS_SILENCE_DEPRECATIONS = 'legacy-js-api'
+diff --git a/index.html b/index.html
+index 4b95012..5fe4ee2 100644
+--- a/index.html
++++ b/index.html
+@@ -10,7 +10,7 @@
+   <meta name="renderer" content="webkit">
+   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+   <link rel="icon" href="/favicon.ico">
+-  <title>go-admin</title>
++  <title>INFA Monitoring Portal</title>
+   <!-- ============ 配色方案 ============
+        在解析任何 CSS 之前决定明暗，否则存了 dark 偏好的用户会先看到一帧亮色。
+        只能写在这里：模块脚本一律是 defer 的，跑起来时首屏已经画完了。
 diff --git a/src/App.vue b/src/App.vue
 index aa69265..fa49fb7 100644
 --- a/src/App.vue
@@ -222,6 +235,39 @@ index 0000000..7106de0
 +  demoLogin: '展示版帳號：admin / 123456 或 demo / demo1234',
 +  demoNotSaved: '展示版：變更不會被儲存'
 +}
+diff --git a/src/settings.js b/src/settings.js
+index e130798..da81c25 100644
+--- a/src/settings.js
++++ b/src/settings.js
+@@ -1,6 +1,9 @@
+ export default {
+   title: 'go-admin后台管理系统',
+ 
++  /** 瀏覽器分頁標題（INFA：固定用英文名稱，每一頁都一樣） */
++  tabTitle: 'INFA Monitoring Portal',
++
+   /**
+    * @type {boolean} true | false
+    * @description Whether show the settings right-panel
+diff --git a/src/utils/get-page-title.js b/src/utils/get-page-title.js
+index 9528a74..8f9dd08 100644
+--- a/src/utils/get-page-title.js
++++ b/src/utils/get-page-title.js
+@@ -1,10 +1,6 @@
+-import storage from '@/utils/storage'
++import settings from '@/settings'
+ 
+-export default function getPageTitle(pageTitle) {
+-  const app_info = storage.get('app_info')
+-  const title = app_info ? app_info.sys_app_name : 'go-admin 后台管理系统'
+-  if (pageTitle) {
+-    return `${pageTitle} - ${title}`
+-  }
+-  return `${title}`
++// INFA：瀏覽器分頁標題固定用英文名稱，不加頁面名稱，也不跟後台的系統名稱連動
++export default function getPageTitle() {
++  return settings.tabTitle
+ }
 diff --git a/src/utils/request.ts b/src/utils/request.ts
 index d61ce21..03c1ff4 100644
 --- a/src/utils/request.ts
@@ -450,10 +496,18 @@ index 0000000..4fb437b
 +defineOptions({ name: 'InfaRegion' })
 +</script>
 diff --git a/src/views/login/index.vue b/src/views/login/index.vue
-index ccffcab..cab798d 100644
+index ccffcab..ee682c3 100644
 --- a/src/views/login/index.vue
 +++ b/src/views/login/index.vue
-@@ -164,7 +164,8 @@ export default {
+@@ -146,6 +146,7 @@ import { getCodeImg } from '@/api/login'
+ import { prefetchOnIdle } from '@/utils/prefetch'
+ import { useSystemStore } from '@/stores/system'
+ import { useUserStore } from '@/stores/user'
++import settings from '@/settings'
+ import { User, Lock, Key, View, Hide, Loading } from '@element-plus/icons-vue'
+ import Gopher from '@/components/Gopher'
+ import LangSelect from '@/components/LangSelect'
+@@ -164,7 +165,8 @@ export default {
        loginForm: {
          username: 'admin',
          password: '123456',
@@ -463,6 +517,43 @@ index ccffcab..cab798d 100644
          uuid: ''
        },
        passwordType: 'password',
+@@ -223,7 +225,7 @@ export default {
+     getSystemSetting() {
+       useSystemStore().settingDetail().then((ret) => {
+         this.sysInfo = ret
+-        document.title = ret.sys_app_name
++        document.title = settings.tabTitle
+       })
+     },
+     getCode() {
+diff --git a/tests/e2e/mocked/analytics.spec.ts b/tests/e2e/mocked/analytics.spec.ts
+index d3dd4fa..a4962e8 100644
+--- a/tests/e2e/mocked/analytics.spec.ts
++++ b/tests/e2e/mocked/analytics.spec.ts
+@@ -57,9 +57,9 @@ test.describe('analytics', () => {
+     expect(new URL(hit.page_location).pathname).toBe('/login')
+ 
+     // The path is what tells the login page apart, not the title: the /login
+-    // route declares no meta.title, so getPageTitle falls back to the site name
++    // INFA: the tab title is always the fixed English name (see get-page-title.js)
+     // and reports the same string every untitled route does.
+-    expect(hit.page_title).toBe('go-admin 后台管理系统')
++    expect(hit.page_title).toBe('INFA Monitoring Portal')
+   })
+ 
+   test('a page the guard turned away is not reported as visited', async({ page }) => {
+diff --git a/tests/unit/lang/coverage.spec.ts b/tests/unit/lang/coverage.spec.ts
+index 3a7d9a3..e53c06d 100644
+--- a/tests/unit/lang/coverage.spec.ts
++++ b/tests/unit/lang/coverage.spec.ts
+@@ -54,7 +54,6 @@ const KNOWN: Record<string, number> = {
+ 
+   // The application title, which ends up in the browser tab.
+   'src/settings.js': 1,
+-  'src/utils/get-page-title.js': 1,
+ 
+   // Fallback titles for the fixed routes. Both already carry a titleKey, so
+   // these render only when the pack is missing the key.
 diff --git a/vite.config.mjs b/vite.config.mjs
 index 9cca6c2..d1a9782 100644
 --- a/vite.config.mjs

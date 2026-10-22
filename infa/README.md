@@ -54,6 +54,7 @@ go-admin 的權限是「帳號 → 一個角色 → 角色勾選的選單」。�
 | `src/views/infa/link/index.vue` | 子項目還沒設定網址時的提示頁 |
 | `src/lang/{zh-CN,en-US}/infa.ts` | 以上頁面的文字 |
 | `src/App.vue` | 移除上游內建的百度統計追蹤碼 |
+| `src/settings.js`、`src/utils/get-page-title.js`、`index.html`、`src/views/login/index.vue` | 瀏覽器分頁標題固定為英文「INFA Monitoring Portal」 |
 | `src/demo/*`、`.env.demo`、`src/utils/request.ts`、`vite.config.mjs`、`src/env.d.ts`、`src/views/login/index.vue` | 展示版用：`VUE_APP_DEMO=1` 時 API 改由錄好的回應回答；平常的建置不受影響 |
 
 ## 5. 本機開發
