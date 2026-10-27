@@ -2154,10 +2154,10 @@ index 0000000..0f93166
 +</style>
 diff --git a/src/components/ParticleWave/wave.js b/src/components/ParticleWave/wave.js
 new file mode 100644
-index 0000000..5e08a72
+index 0000000..435b695
 --- /dev/null
 +++ b/src/components/ParticleWave/wave.js
-@@ -0,0 +1,364 @@
+@@ -0,0 +1,511 @@
 +/**
 + * Particle-wave backdrop for the login hero, drawn live on a canvas.
 + *
@@ -2165,6 +2165,8 @@ index 0000000..5e08a72
 + *   - a dotted floor whose lines run into a vanishing point on the horizon;
 + *   - bundles of fine luminous strands that rise on both sides and settle
 + *     into the horizon glow in the middle;
++ *   - motes of light that rise from random spots on the floor, drift and
++ *     spread a little, fade out and come back somewhere else;
 + *   - out-of-focus bokeh drifting in the foreground.
 + *
 + * Everything moves on one slow clock (SPEED) so the scene reads as calm and
@@ -2184,6 +2186,9 @@ index 0000000..5e08a72
 + *   - it runs at most 60 frames a second, also on 120 Hz screens, and stops
 + *     entirely while the tab is hidden or the page is gone.
 + */
++
++/** Animation version; see infa/ANIMATION.md in the INFA repo for the history. */
++export const ANIMATION_VERSION = '1.1'
 +
 +const SPEED = 0.26 // global time scale; lower = calmer
 +const MAX_DPR = 1.5 // beyond this the dots look the same and cost twice as much
@@ -2205,20 +2210,56 @@ index 0000000..5e08a72
 +// Dots are grouped into this many brightness steps, one fill per step.
 +const STEPS = 10
 +
++// Rising motes. Each one lives for a while, fades, and reappears at a new
++// spot; where and how is a pure function of its index and how many times it
++// has respawned, so nothing is stored or allocated per frame.
++const MOTES = 130
++const MOTE_FIELDS = 3 // offset (s), life (s), phase
++
 +const TAU = Math.PI * 2
 +const rand = (a, b) => a + Math.random() * (b - a)
 +
-+const steps = (r, g, b, max) =>
-+  Array.from({ length: STEPS }, (_, i) => `rgba(${r},${g},${b},${(max * (i + 0.5)) / STEPS})`)
++// Colour bands, centre to edge: near-white cyan at the horizon, through
++// cyan and sky blue to royal blue, and a touch of indigo at the far edges.
++// Each dot takes the band for its distance from the centre; together with the
++// brightness steps that gives a graded blue drawn with plain colours, which
++// is much cheaper than painting thousands of dots through a gradient.
++const BANDS = [
++  [205, 240, 255],
++  [110, 210, 255],
++  [58, 141, 255],
++  [45, 95, 240],
++  [74, 69, 208]
++]
++const BAND_EDGES = [0.1, 0.24, 0.45, 0.72] // distance at which each band ends
 +
-+const FLOOR_DOT_STYLES = steps(70, 165, 255, 0.75)
-+const STRAND_DOT_STYLES = steps(120, 200, 255, 1)
++const bucketStyles = (max) => {
++  const styles = []
++  for (const [r, g, b] of BANDS) {
++    for (let i = 0; i < STEPS; i++) styles.push(`rgba(${r},${g},${b},${(max * (i + 0.5)) / STEPS})`)
++  }
++  return styles
++}
++const FLOOR_STYLES = bucketStyles(0.75)
++const STRAND_STYLES = bucketStyles(1)
++const BUCKETS = BANDS.length * STEPS
++
++function bandOf(d) {
++  let i = 0
++  while (i < BAND_EDGES.length && d > BAND_EDGES[i]) i++
++  return i
++}
++
++// Line colours, per band, for the floor lines and the strands.
++const lineStyle = (band, a) => `rgba(${BANDS[band][0]},${BANDS[band][1]},${BANDS[band][2]},${a})`
 +
 +export function startParticleWave(canvas) {
++  canvas.dataset.version = ANIMATION_VERSION
 +  const ctx = canvas.getContext('2d', { alpha: false })
 +  const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
 +  const background = document.createElement('canvas')
 +  const sprite = document.createElement('canvas')
++  const moteSprite = document.createElement('canvas')
 +  // Bokeh as columns of numbers: x, y, radius, vx, vy (px per second),
 +  // alpha, phase. Refilled on resize only.
 +  const BOKEH_FIELDS = 7
@@ -2235,7 +2276,8 @@ index 0000000..5e08a72
 +  for (let c = 0; c < FLOOR_COLS; c++) {
 +    const u = (c / (FLOOR_COLS - 1) - 0.5) * 4
 +    colU[c] = u
-+    colStyle.push(`rgba(70,150,255,${0.05 + 0.13 * (1 - Math.min(1, Math.abs(u) / 1.6))})`)
++    colStyle.push(lineStyle(Math.min(BANDS.length - 1, bandOf(Math.abs(u) / 2.2) + 1),
++      0.05 + 0.13 * (1 - Math.min(1, Math.abs(u) / 1.6))))
 +  }
 +  const rowZ = new Float32Array(FLOOR_ROWS)
 +  const rowFade = new Float32Array(FLOOR_ROWS)
@@ -2255,8 +2297,18 @@ index 0000000..5e08a72
 +      phase: rand(0, TAU),
 +      amp: rand(0.7, 1.3),
 +      dotEvery: 3 + Math.floor(rand(0, 4)),
-+      style: `rgba(80,170,255,${0.06 + 0.16 * edge})`
++      // Strand lines run across every band, so they are stroked with a
++      // horizontal gradient at this opacity (46 lines: cheap).
++      alpha: 0.06 + 0.16 * edge
 +    })
++  }
++
++  const motes = new Float64Array(MOTES * MOTE_FIELDS)
++  for (let i = 0; i < MOTES; i++) {
++    const life = rand(7, 13) // seconds from appearing to gone
++    motes[i * MOTE_FIELDS] = rand(0, life) // so they do not all start together
++    motes[i * MOTE_FIELDS + 1] = life
++    motes[i * MOTE_FIELDS + 2] = rand(0, TAU)
 +  }
 +
 +  // Scratch output of floorPoint(): x, y, scale. A typed array rather than
@@ -2264,16 +2316,23 @@ index 0000000..5e08a72
 +  // is boxed on every assignment, which allocates.
 +  const P = new Float64Array(3)
 +
-+  // Dot buffers, one per brightness step: x, y, radius triples. Sized for the
-+  // worst case once, then only overwritten.
-+  const floorBuf = []
-+  const strandBuf = []
-+  const floorLen = new Uint16Array(STEPS)
-+  const strandLen = new Uint16Array(STEPS)
-+  for (let i = 0; i < STEPS; i++) {
-+    floorBuf.push(new Float32Array(FLOOR_COLS * FLOOR_ROWS * 3))
-+    strandBuf.push(new Float32Array(STRANDS * (STRAND_STEPS + 1) * 3))
++  // A dot layer: positions collected during the frame, then drawn sorted by
++  // bucket (colour band x brightness step), one fill per bucket. All arrays
++  // are sized for the worst case once and only overwritten afterwards.
++  function dotLayer(capacity, styles) {
++    return {
++      n: 0,
++      x: new Float32Array(capacity),
++      y: new Float32Array(capacity),
++      r: new Float32Array(capacity),
++      b: new Uint8Array(capacity),
++      order: new Uint16Array(capacity),
++      start: new Uint16Array(BUCKETS + 1),
++      styles
++    }
 +  }
++  const floorDots = dotLayer(FLOOR_COLS * FLOOR_ROWS, FLOOR_STYLES)
++  const strandDots = dotLayer(STRANDS * (STRAND_STEPS + 1), STRAND_STYLES)
 +
 +  function paintBackground() {
 +    background.width = Math.max(1, Math.round(w * BG_SCALE))
@@ -2282,18 +2341,21 @@ index 0000000..5e08a72
 +    b.setTransform(BG_SCALE, 0, 0, BG_SCALE, 0, 0)
 +
 +    const g = b.createLinearGradient(0, 0, 0, h)
-+    g.addColorStop(0, '#01030c')
-+    g.addColorStop(0.45, '#04133a')
-+    g.addColorStop(0.62, '#062463')
-+    g.addColorStop(1, '#020b26')
++    g.addColorStop(0, '#010310')
++    g.addColorStop(0.25, '#030b2a')
++    g.addColorStop(0.45, '#06185a')
++    g.addColorStop(0.56, '#0a3290')
++    g.addColorStop(0.7, '#061f6a')
++    g.addColorStop(1, '#040d38')
 +    b.fillStyle = g
 +    b.fillRect(0, 0, w, h)
 +
 +    // Wide soft glow plus a flattened bright core on the horizon.
 +    const r = Math.max(w, h) * 0.6
 +    const glow = b.createRadialGradient(w / 2, horizon, 0, w / 2, horizon, r)
-+    glow.addColorStop(0, 'rgba(50,140,255,0.55)')
-+    glow.addColorStop(0.3, 'rgba(25,90,230,0.22)')
++    glow.addColorStop(0, 'rgba(60,160,255,0.55)')
++    glow.addColorStop(0.3, 'rgba(30,95,235,0.22)')
++    glow.addColorStop(0.6, 'rgba(45,50,190,0.08)')
 +    glow.addColorStop(1, 'rgba(0,0,0,0)')
 +    b.fillStyle = glow
 +    b.fillRect(0, 0, w, h)
@@ -2306,6 +2368,21 @@ index 0000000..5e08a72
 +    core.addColorStop(1, 'rgba(0,0,0,0)')
 +    b.fillStyle = core
 +    b.fillRect(-w, -w, w * 2, w * 2)
++  }
++
++  // A small glow with a near-white core, for the rising motes.
++  function paintMoteSprite() {
++    const size = 32
++    moteSprite.width = size
++    moteSprite.height = size
++    const s = moteSprite.getContext('2d')
++    const g = s.createRadialGradient(size / 2, size / 2, 0, size / 2, size / 2, size / 2)
++    g.addColorStop(0, 'rgba(225,245,255,1)')
++    g.addColorStop(0.18, 'rgba(140,210,255,0.9)')
++    g.addColorStop(0.45, 'rgba(60,150,255,0.28)')
++    g.addColorStop(1, 'rgba(40,120,255,0)')
++    s.fillStyle = g
++    s.fillRect(0, 0, size, size)
 +  }
 +
 +  function paintSprite() {
@@ -2331,6 +2408,7 @@ index 0000000..5e08a72
 +    ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
 +    if (!w || !h) return
 +    paintBackground()
++    paintGradients()
 +
 +    bokehCount = Math.round(w * h / 26000)
 +    bokeh = new Float64Array(bokehCount * BOKEH_FIELDS)
@@ -2373,35 +2451,61 @@ index 0000000..5e08a72
 +    return i < 0 ? 0 : i >= STEPS ? STEPS - 1 : i
 +  }
 +
-+  function push(bufs, lens, i, x, y, r) {
-+    const n = lens[i]
-+    const buf = bufs[i]
-+    buf[n] = x
-+    buf[n + 1] = y
-+    buf[n + 2] = r
-+    lens[i] = n + 3
++  function addDot(layer, x, y, r, alpha) {
++    // Distance from the horizon centre, flattened so the bands are wide ovals.
++    const dx = (x - w / 2) / (w * 0.5)
++    const dy = (y - horizon) / (h * 0.35)
++    const d = Math.sqrt(dx * dx + dy * dy) * 0.5
++    const n = layer.n
++    layer.x[n] = x
++    layer.y[n] = y
++    layer.r[n] = r
++    layer.b[n] = bandOf(d) * STEPS + step(alpha)
++    layer.n = n + 1
 +  }
 +
-+  function fillDots(bufs, lens, styles) {
-+    for (let i = 0; i < STEPS; i++) {
-+      const buf = bufs[i]
-+      const n = lens[i]
-+      if (!n) continue
++  function drawDots(layer) {
++    const { n, b, order, start, x, y, r, styles } = layer
++    // Counting sort by bucket into `order`.
++    start.fill(0)
++    for (let i = 0; i < n; i++) start[b[i] + 1]++
++    for (let k = 0; k < BUCKETS; k++) start[k + 1] += start[k]
++    for (let i = 0; i < n; i++) order[start[b[i]]++] = i
++    // `start` now holds each bucket's end; walk the buckets in order.
++    let from = 0
++    for (let k = 0; k < BUCKETS; k++) {
++      const to = start[k]
++      if (to === from) continue
 +      ctx.beginPath()
-+      for (let j = 0; j < n; j += 3) {
-+        const x = buf[j]
-+        const y = buf[j + 1]
-+        const r = buf[j + 2]
++      for (let j = from; j < to; j++) {
++        const i = order[j]
++        const ri = r[i]
 +        // Tiny dots as squares: indistinguishable at this size, far cheaper.
-+        if (r < 1.1) ctx.rect(x - r, y - r, r * 2, r * 2)
++        if (ri < 1.1) ctx.rect(x[i] - ri, y[i] - ri, ri * 2, ri * 2)
 +        else {
-+          ctx.moveTo(x + r, y)
-+          ctx.arc(x, y, r, 0, TAU)
++          ctx.moveTo(x[i] + ri, y[i])
++          ctx.arc(x[i], y[i], ri, 0, TAU)
 +        }
 +      }
-+      ctx.fillStyle = styles[i]
++      ctx.fillStyle = styles[k]
 +      ctx.fill()
++      from = to
 +    }
++    layer.n = 0
++  }
++
++  // The strands' horizontal gradient, rebuilt on resize.
++  let strandPaint = null
++
++  function paintGradients() {
++    strandPaint = ctx.createLinearGradient(0, 0, w, 0)
++    strandPaint.addColorStop(0, '#4d55ff')
++    strandPaint.addColorStop(0.22, '#3d86ff')
++    strandPaint.addColorStop(0.42, '#8fdcff')
++    strandPaint.addColorStop(0.5, '#d6f3ff')
++    strandPaint.addColorStop(0.58, '#8fdcff')
++    strandPaint.addColorStop(0.78, '#3d86ff')
++    strandPaint.addColorStop(1, '#4d55ff')
 +  }
 +
 +  function drawFloor(t) {
@@ -2419,7 +2523,6 @@ index 0000000..5e08a72
 +      ctx.stroke()
 +    }
 +
-+    floorLen.fill(0)
 +    for (let r = FLOOR_ROWS - 1; r >= 0; r--) {
 +      const z = rowZ[r]
 +      const fade = rowFade[r]
@@ -2430,10 +2533,10 @@ index 0000000..5e08a72
 +        if (px < -10 || px > w + 10 || py < horizon - 40 || py > h + 10) continue
 +        // A slow, shallow shimmer; a fast one reads as flicker.
 +        const tw = 0.8 + 0.2 * Math.sin(t * 0.9 + c * 1.9 + r * 2.7)
-+        push(floorBuf, floorLen, step(fade * tw), px, py, Math.max(0.6, P[2] * 1.6))
++        addDot(floorDots, px, py, Math.max(0.6, P[2] * 1.6), fade * tw)
 +      }
 +    }
-+    fillDots(floorBuf, floorLen, FLOOR_DOT_STYLES)
++    drawDots(floorDots)
 +  }
 +
 +  function strandY(st, u, t) {
@@ -2447,7 +2550,7 @@ index 0000000..5e08a72
 +
 +  function drawStrands(t) {
 +    ctx.lineWidth = 0.9
-+    strandLen.fill(0)
++    ctx.strokeStyle = strandPaint
 +    for (let s = 0; s < STRANDS; s++) {
 +      const st = strands[s]
 +      ctx.beginPath()
@@ -2457,7 +2560,7 @@ index 0000000..5e08a72
 +        if (i) ctx.lineTo(w / 2 + u * w * 0.5, y)
 +        else ctx.moveTo(w / 2 + u * w * 0.5, y)
 +      }
-+      ctx.strokeStyle = st.style
++      ctx.globalAlpha = st.alpha
 +      ctx.stroke()
 +
 +      // Particles riding along the strand, drifting slowly sideways.
@@ -2467,10 +2570,52 @@ index 0000000..5e08a72
 +        const L = lift(u)
 +        const tw = 0.7 + 0.3 * Math.sin(t * 1.1 + i * 0.9 + st.phase)
 +        const a = (0.25 + 0.75 * L) * (0.4 + 0.6 * st.edge) * tw
-+        push(strandBuf, strandLen, step(a), w / 2 + u * w * 0.5, strandY(st, u, t), 0.8 + L * 1.6)
++        addDot(strandDots, w / 2 + u * w * 0.5, strandY(st, u, t), 0.8 + L * 1.6, a)
 +      }
 +    }
-+    fillDots(strandBuf, strandLen, STRAND_DOT_STYLES)
++    ctx.globalAlpha = 1
++    drawDots(strandDots)
++  }
++
++  // Deterministic pseudo-random number in [0, 1) for an integer seed.
++  function hash(n) {
++    const x = Math.sin(n * 12.9898 + 78.233) * 43758.5453
++    return x - Math.floor(x)
++  }
++
++  function drawMotes(seconds, t) {
++    const scaleY = h / 900
++    for (let i = 0; i < MOTES; i++) {
++      const o = i * MOTE_FIELDS
++      const life = motes[o + 1]
++      const clock = seconds + motes[o]
++      const cycle = Math.floor(clock / life)
++      const k = (clock - cycle * life) / life // 0..1 through this life
++      const seed = i * 7919 + cycle * 104729
++
++      // Where this life starts: a random spot on the visible floor.
++      const u = (hash(seed) - 0.5) * 2.4
++      const z = 160 + Math.pow(hash(seed + 1), 1.4) * 1500
++      floorPoint(u, z, t)
++      const s = P[2]
++      if (P[0] < -20 || P[0] > w + 20) continue
++
++      // Rise, sway and spread outward a little, all slowly.
++      const rise = (40 + hash(seed + 2) * 110) * k
++      const sway = Math.sin(k * 3.2 + motes[o + 2]) * 10
++      const spread = Math.sign(u) * k * 18
++      const x = P[0] + (sway + spread) * s * 0.9
++      const y = P[1] - rise * s * scaleY
++      if (y < -20 || y > h + 20) continue
++
++      // Fade in and out over the life; nearer motes are larger and brighter.
++      const env = Math.sin(Math.PI * k)
++      const near = Math.min(1, s * 1.6)
++      ctx.globalAlpha = env * env * (0.35 + 0.65 * near)
++      const r = 2 + 7 * near
++      ctx.drawImage(moteSprite, x - r, y - r, r * 2, r * 2)
++    }
++    ctx.globalAlpha = 1
 +  }
 +
 +  function drawBokeh(seconds, t) {
@@ -2496,6 +2641,7 @@ index 0000000..5e08a72
 +    ctx.globalCompositeOperation = 'lighter'
 +    drawFloor(t)
 +    drawStrands(t)
++    drawMotes(reduceMotion ? 25 : seconds, t)
 +    drawBokeh(reduceMotion ? 0 : seconds, t)
 +    ctx.globalCompositeOperation = 'source-over'
 +  }
@@ -2509,6 +2655,7 @@ index 0000000..5e08a72
 +  }
 +
 +  paintSprite()
++  paintMoteSprite()
 +  // Under reduced motion, draw a single still frame on each resize.
 +  const observer = new ResizeObserver(() => {
 +    resize()
