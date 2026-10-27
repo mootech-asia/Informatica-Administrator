@@ -14,18 +14,118 @@ index 0000000..f0569f9
 +VITE_BASE = './'
 +SASS_SILENCE_DEPRECATIONS = 'legacy-js-api'
 diff --git a/index.html b/index.html
-index 4b95012..5fe4ee2 100644
+index 4b95012..050c415 100644
 --- a/index.html
 +++ b/index.html
-@@ -10,7 +10,7 @@
+@@ -2,7 +2,7 @@
+ <!-- The default; src/lang overwrites it once it knows what the visitor gets.
+      Set here so the document is never without one, which screen readers and
+      :lang() both rely on. -->
+-<html lang="zh-CN">
++<html lang="en-US">
+ 
+ <head>
+   <meta charset="utf-8">
+@@ -10,11 +10,11 @@
    <meta name="renderer" content="webkit">
    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
    <link rel="icon" href="/favicon.ico">
 -  <title>go-admin</title>
+-  <!-- ============ 配色方案 ============
+-       在解析任何 CSS 之前决定明暗，否则存了 dark 偏好的用户会先看到一帧亮色。
+-       只能写在这里：模块脚本一律是 defer 的，跑起来时首屏已经画完了。
+-       规则与 src/utils/color-scheme.ts 一致，两处读同一个键，改一处要改两处。 -->
 +  <title>INFA Monitoring Portal</title>
-   <!-- ============ 配色方案 ============
-        在解析任何 CSS 之前决定明暗，否则存了 dark 偏好的用户会先看到一帧亮色。
-        只能写在这里：模块脚本一律是 defer 的，跑起来时首屏已经画完了。
++  <!-- Colour scheme: decided before any CSS is parsed, or visitors who saved
++       a dark preference see one light frame first. It has to live here
++       because module scripts are deferred. Same rule and storage key as
++       src/utils/color-scheme.ts; change both together. -->
+   <script>
+     (function () {
+       try {
+@@ -23,16 +23,15 @@
+           ((stored === 'system' || !stored) &&
+             window.matchMedia && matchMedia('(prefers-color-scheme: dark)').matches)
+         if (dark) document.documentElement.classList.add('dark')
+-      } catch (e) { /* 隐私模式下 localStorage 会抛，主题不值得为此让页面挂掉 */ }
++      } catch (e) { /* localStorage throws in private mode; not worth failing the page over */ }
+     })()
+   </script>
+-  <meta name="keywords" content="go-admin,gin,权限管理系统,gin-admin,gin-vue-admin,go">
+-  <meta name="description"
+-    content="基于Gin + Vue + Element UI的前后端分离权限管理系统，初始化极度简单，只需要配置文件中，修改数据库连接，系统启动后会自动初始化数据库信息以及必须的基础数据">
++  <meta name="keywords" content="INFA,monitoring,portal,infrastructure">
++  <meta name="description" content="INFA Monitoring Portal: one entry point to the infrastructure monitoring systems of every region.">
+   <style>
+-    /* 这两个值必须与 styles/tokens.css 的 --ga-bg-body 一致。写在这里是因为
+-       首屏在样式表加载之前就要有底色；改 token 时要一起改。
+-       深色分支靠上面那段脚本加的 .dark 生效，所以不会闪一帧浅色。 */
++    /* Must match --ga-bg-body in styles/tokens.css: the first paint needs a
++       background before the stylesheet loads. The dark branch relies on the
++       .dark class added by the script above, so no light frame flashes. */
+     html,
+     body,
+     #app {
+@@ -48,9 +47,8 @@
+       background: #0a0a0a;
+     }
+ 
+-    /* ============ 首屏加载 ============
+-       与侧边栏、登录页统一的深蓝品牌色；
+-       以字标 + 细进度条替代旋转圆环，减少视觉噪声。 */
++    /* Loading screen: brand navy shared with the sidebar and login page;
++       a wordmark and a thin progress bar instead of a spinner. */
+     #loader-wrapper {
+       position: fixed;
+       inset: 0;
+@@ -66,7 +64,7 @@
+       transition: opacity 0.45s ease, visibility 0.45s ease;
+     }
+ 
+-    /* 品牌字标 */
++    /* Wordmark */
+     #loader-wrapper .brand {
+       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
+         "Hiragino Sans GB", "Microsoft YaHei", Arial, sans-serif;
+@@ -83,7 +81,7 @@
+       color: #40a9ff;
+     }
+ 
+-    /* 细进度条：不确定进度，使用往复滑块 */
++    /* Thin indeterminate progress bar */
+     #loader-wrapper .bar {
+       position: relative;
+       width: 180px;
+@@ -129,13 +127,13 @@
+       100% { left: 100%; }
+     }
+ 
+-    /* 应用挂载后淡出移除 */
++    /* Fades out once the app has mounted */
+     .loaded #loader-wrapper {
+       opacity: 0;
+       visibility: hidden;
+     }
+ 
+-    /* 尊重系统的减少动效偏好 */
++    /* Respect the reduced-motion preference */
+     @media (prefers-reduced-motion: reduce) {
+       #loader-wrapper .brand,
+       #loader-wrapper .bar,
+@@ -147,11 +145,11 @@
+ 
+ <body>
+   <div id="app"></div>
+-  <!-- 置于 #app 之外，避免 Vue 挂载时被直接替换掉，从而能播放淡出过渡 -->
++  <!-- Outside #app so mounting Vue does not replace it and it can fade out -->
+   <div id="loader-wrapper">
+     <div class="brand">go<em>-</em>admin</div>
+     <div class="bar"></div>
+-    <div class="tip">正在加载系统资源</div>
++    <div class="tip">Loading</div>
+   </div>
+   <script type="module" src="/src/main.js"></script>
+ </body>
 diff --git a/src/App.vue b/src/App.vue
 index aa69265..fa49fb7 100644
 --- a/src/App.vue
@@ -50,6 +150,19 @@ index aa69265..fa49fb7 100644
  }
  </script>
  
+diff --git a/src/assets/dark.svg b/src/assets/dark.svg
+index f646bd7..786e9f6 100644
+--- a/src/assets/dark.svg
++++ b/src/assets/dark.svg
+@@ -19,7 +19,7 @@
+             <feColorMatrix values="0 0 0 0 0   0 0 0 0 0   0 0 0 0 0  0 0 0 0.1 0" type="matrix" in="shadowBlurOuter1"></feColorMatrix>
+         </filter>
+     </defs>
+-    <g id="配置面板" width="48" height="40" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
++    <g id="settings-panel" width="48" height="40" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
+         <g id="setting-copy-2" width="48" height="40" transform="translate(-1190.000000, -136.000000)">
+             <g id="Group-8" width="48" height="40" transform="translate(1167.000000, 0.000000)">
+                 <g id="Group-5-Copy-5" filter="url(#filter-1)" transform="translate(25.000000, 137.000000)">
 diff --git a/src/assets/infa-login/graylog.webp b/src/assets/infa-login/graylog.webp
 new file mode 100644
 index 0000000000000000000000000000000000000000..479219369080a5feade9bf99bbd83f37d84bfa57
@@ -1978,6 +2091,32 @@ PLI?e~KIbn@&rk6$x*^Ts
 literal 0
 HcmV?d00001
 
+diff --git a/src/assets/light.svg b/src/assets/light.svg
+index ab7cc08..ebfb5c7 100644
+--- a/src/assets/light.svg
++++ b/src/assets/light.svg
+@@ -19,7 +19,7 @@
+             <feColorMatrix values="0 0 0 0 0   0 0 0 0 0   0 0 0 0 0  0 0 0 0.1 0" type="matrix" in="shadowBlurOuter1"></feColorMatrix>
+         </filter>
+     </defs>
+-    <g id="配置面板" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
++    <g id="settings-panel" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
+         <g id="setting-copy-2" transform="translate(-1254.000000, -136.000000)">
+             <g id="Group-8" transform="translate(1167.000000, 0.000000)">
+                 <g id="Group-5" filter="url(#filter-1)" transform="translate(89.000000, 137.000000)">
+diff --git a/src/components/Breadcrumb/index.vue b/src/components/Breadcrumb/index.vue
+index c61815f..49aca57 100644
+--- a/src/components/Breadcrumb/index.vue
++++ b/src/components/Breadcrumb/index.vue
+@@ -44,7 +44,7 @@ export default {
+       const first = matched[0]
+ 
+       if (!this.isDashboard(first)) {
+-        matched = [{ path: '/index', meta: { title: '首页', titleKey: 'route.dashboard' }}].concat(matched)
++        matched = [{ path: '/index', meta: { title: 'Home', titleKey: 'route.dashboard' }}].concat(matched)
+       }
+ 
+       this.levelList = matched.filter(item => item.meta && item.meta.title && item.meta.breadcrumb !== false)
 diff --git a/src/components/ParticleWave/index.vue b/src/components/ParticleWave/index.vue
 new file mode 100644
 index 0000000..0f93166
@@ -2015,10 +2154,10 @@ index 0000000..0f93166
 +</style>
 diff --git a/src/components/ParticleWave/wave.js b/src/components/ParticleWave/wave.js
 new file mode 100644
-index 0000000..9974d15
+index 0000000..5e08a72
 --- /dev/null
 +++ b/src/components/ParticleWave/wave.js
-@@ -0,0 +1,245 @@
+@@ -0,0 +1,364 @@
 +/**
 + * Particle-wave backdrop for the login hero, drawn live on a canvas.
 + *
@@ -2030,9 +2169,26 @@ index 0000000..9974d15
 + *
 + * Everything moves on one slow clock (SPEED) so the scene reads as calm and
 + * steady rather than busy.
++ *
++ * Written for an even frame rate rather than for brevity:
++ *   - the frame loop allocates nothing (no arrays, paths or colour strings):
++ *     dot positions go into buffers sized once, so the garbage collector
++ *     never has a reason to pause mid-animation;
++ *   - thousands of dots are drawn as a handful of fills, one per brightness
++ *     step, instead of one fill each;
++ *   - the background is a smooth gradient, so it is painted once per resize
++ *     at a quarter of the resolution and scaled up: about 1/16 the memory of
++ *     a full-size copy, with no visible difference;
++ *   - all motion is a function of elapsed time, never "+= per frame", so a
++ *     dropped frame does not make anything lurch;
++ *   - it runs at most 60 frames a second, also on 120 Hz screens, and stops
++ *     entirely while the tab is hidden or the page is gone.
 + */
 +
-+const SPEED = 0.32 // global time scale; lower = calmer
++const SPEED = 0.26 // global time scale; lower = calmer
++const MAX_DPR = 1.5 // beyond this the dots look the same and cost twice as much
++const BG_SCALE = 0.25 // resolution of the cached background, relative to CSS px
++const FRAME_MS = 1000 / 60 - 2 // skip frames that come sooner than this (120 Hz)
 +
 +// Floor
 +const FLOOR_COLS = 150
@@ -2046,48 +2202,149 @@ index 0000000..9974d15
 +const STRANDS = 46
 +const STRAND_STEPS = 160
 +
++// Dots are grouped into this many brightness steps, one fill per step.
++const STEPS = 10
++
++const TAU = Math.PI * 2
 +const rand = (a, b) => a + Math.random() * (b - a)
 +
++const steps = (r, g, b, max) =>
++  Array.from({ length: STEPS }, (_, i) => `rgba(${r},${g},${b},${(max * (i + 0.5)) / STEPS})`)
++
++const FLOOR_DOT_STYLES = steps(70, 165, 255, 0.75)
++const STRAND_DOT_STYLES = steps(120, 200, 255, 1)
++
 +export function startParticleWave(canvas) {
-+  const ctx = canvas.getContext('2d')
++  const ctx = canvas.getContext('2d', { alpha: false })
 +  const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
-+  const bokeh = []
-+  const strands = []
++  const background = document.createElement('canvas')
++  const sprite = document.createElement('canvas')
++  // Bokeh as columns of numbers: x, y, radius, vx, vy (px per second),
++  // alpha, phase. Refilled on resize only.
++  const BOKEH_FIELDS = 7
++  let bokeh = new Float64Array(0)
++  let bokehCount = 0
 +  let w = 0
 +  let h = 0
 +  let horizon = 0
 +  let raf = 0
 +
++  // Fixed per-column and per-row values, computed once.
++  const colU = new Float32Array(FLOOR_COLS)
++  const colStyle = []
++  for (let c = 0; c < FLOOR_COLS; c++) {
++    const u = (c / (FLOOR_COLS - 1) - 0.5) * 4
++    colU[c] = u
++    colStyle.push(`rgba(70,150,255,${0.05 + 0.13 * (1 - Math.min(1, Math.abs(u) / 1.6))})`)
++  }
++  const rowZ = new Float32Array(FLOOR_ROWS)
++  const rowFade = new Float32Array(FLOOR_ROWS)
++  for (let r = 0; r < FLOOR_ROWS; r++) {
++    const k = r / (FLOOR_ROWS - 1)
++    rowZ[r] = NEAR + Math.pow(k, 1.7) * (FAR - NEAR)
++    rowFade[r] = 1 - k * 0.6
++  }
++
++  const strands = []
 +  for (let i = 0; i < STRANDS; i++) {
++    const d = i / (STRANDS - 1) // 0 = top of the bundle, 1 = bottom
++    const edge = 1 - Math.abs(d - 0.5) * 1.4
 +    strands.push({
-+      d: i / (STRANDS - 1), // 0 = top of the bundle, 1 = bottom
-+      phase: rand(0, Math.PI * 2),
++      d,
++      edge,
++      phase: rand(0, TAU),
 +      amp: rand(0.7, 1.3),
-+      dotEvery: 3 + Math.floor(rand(0, 4))
++      dotEvery: 3 + Math.floor(rand(0, 4)),
++      style: `rgba(80,170,255,${0.06 + 0.16 * edge})`
 +    })
 +  }
 +
++  // Scratch output of floorPoint(): x, y, scale. A typed array rather than
++  // three variables, because a captured variable holding a fractional number
++  // is boxed on every assignment, which allocates.
++  const P = new Float64Array(3)
++
++  // Dot buffers, one per brightness step: x, y, radius triples. Sized for the
++  // worst case once, then only overwritten.
++  const floorBuf = []
++  const strandBuf = []
++  const floorLen = new Uint16Array(STEPS)
++  const strandLen = new Uint16Array(STEPS)
++  for (let i = 0; i < STEPS; i++) {
++    floorBuf.push(new Float32Array(FLOOR_COLS * FLOOR_ROWS * 3))
++    strandBuf.push(new Float32Array(STRANDS * (STRAND_STEPS + 1) * 3))
++  }
++
++  function paintBackground() {
++    background.width = Math.max(1, Math.round(w * BG_SCALE))
++    background.height = Math.max(1, Math.round(h * BG_SCALE))
++    const b = background.getContext('2d', { alpha: false })
++    b.setTransform(BG_SCALE, 0, 0, BG_SCALE, 0, 0)
++
++    const g = b.createLinearGradient(0, 0, 0, h)
++    g.addColorStop(0, '#01030c')
++    g.addColorStop(0.45, '#04133a')
++    g.addColorStop(0.62, '#062463')
++    g.addColorStop(1, '#020b26')
++    b.fillStyle = g
++    b.fillRect(0, 0, w, h)
++
++    // Wide soft glow plus a flattened bright core on the horizon.
++    const r = Math.max(w, h) * 0.6
++    const glow = b.createRadialGradient(w / 2, horizon, 0, w / 2, horizon, r)
++    glow.addColorStop(0, 'rgba(50,140,255,0.55)')
++    glow.addColorStop(0.3, 'rgba(25,90,230,0.22)')
++    glow.addColorStop(1, 'rgba(0,0,0,0)')
++    b.fillStyle = glow
++    b.fillRect(0, 0, w, h)
++
++    b.translate(w / 2, horizon)
++    b.scale(1, 0.16)
++    const core = b.createRadialGradient(0, 0, 0, 0, 0, w * 0.32)
++    core.addColorStop(0, 'rgba(120,200,255,0.75)')
++    core.addColorStop(0.4, 'rgba(60,150,255,0.25)')
++    core.addColorStop(1, 'rgba(0,0,0,0)')
++    b.fillStyle = core
++    b.fillRect(-w, -w, w * 2, w * 2)
++  }
++
++  function paintSprite() {
++    const size = 64
++    sprite.width = size
++    sprite.height = size
++    const s = sprite.getContext('2d')
++    const g = s.createRadialGradient(size / 2, size / 2, 0, size / 2, size / 2, size / 2)
++    g.addColorStop(0, 'rgba(70,160,255,1)')
++    g.addColorStop(0.7, 'rgba(70,160,255,0.6)')
++    g.addColorStop(1, 'rgba(70,160,255,0)')
++    s.fillStyle = g
++    s.fillRect(0, 0, size, size)
++  }
++
 +  function resize() {
-+    const dpr = Math.min(window.devicePixelRatio || 1, 2)
++    const dpr = Math.min(window.devicePixelRatio || 1, MAX_DPR)
 +    w = canvas.clientWidth
 +    h = canvas.clientHeight
 +    horizon = h * 0.56
 +    canvas.width = Math.round(w * dpr)
 +    canvas.height = Math.round(h * dpr)
 +    ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
-+    bokeh.length = 0
-+    const n = Math.round(w * h / 26000)
-+    for (let i = 0; i < n; i++) {
++    if (!w || !h) return
++    paintBackground()
++
++    bokehCount = Math.round(w * h / 26000)
++    bokeh = new Float64Array(bokehCount * BOKEH_FIELDS)
++    for (let i = 0; i < bokehCount; i++) {
 +      const big = Math.random() < 0.3
-+      bokeh.push({
-+        x: rand(0, w),
-+        y: big ? rand(h * 0.65, h * 1.02) : rand(h * 0.08, h),
-+        r: big ? rand(6, 20) : rand(1, 2.6),
-+        vx: rand(-0.06, 0.06),
-+        vy: rand(-0.08, -0.02),
-+        a: big ? rand(0.12, 0.35) : rand(0.3, 0.8),
-+        p: rand(0, Math.PI * 2)
-+      })
++      bokeh.set([
++        rand(0, w),
++        big ? rand(h * 0.65, h * 1.02) : rand(h * 0.08, h),
++        big ? rand(6, 20) : rand(1, 2.6),
++        rand(-3.6, 3.6),
++        rand(-4.8, -1.2),
++        big ? rand(0.12, 0.35) : rand(0.3, 0.8),
++        rand(0, TAU)
++      ], i * BOKEH_FIELDS)
 +    }
 +  }
 +
@@ -2098,37 +2355,7 @@ index 0000000..9974d15
 +    return a * a * (3 - 2 * a)
 +  }
 +
-+  function background() {
-+    const g = ctx.createLinearGradient(0, 0, 0, h)
-+    g.addColorStop(0, '#01030c')
-+    g.addColorStop(0.45, '#04133a')
-+    g.addColorStop(0.62, '#062463')
-+    g.addColorStop(1, '#020b26')
-+    ctx.fillStyle = g
-+    ctx.fillRect(0, 0, w, h)
-+
-+    // Wide soft glow plus a flattened bright core on the horizon.
-+    const r = Math.max(w, h) * 0.6
-+    const glow = ctx.createRadialGradient(w / 2, horizon, 0, w / 2, horizon, r)
-+    glow.addColorStop(0, 'rgba(50,140,255,0.55)')
-+    glow.addColorStop(0.3, 'rgba(25,90,230,0.22)')
-+    glow.addColorStop(1, 'rgba(0,0,0,0)')
-+    ctx.fillStyle = glow
-+    ctx.fillRect(0, 0, w, h)
-+
-+    ctx.save()
-+    ctx.translate(w / 2, horizon)
-+    ctx.scale(1, 0.16)
-+    const core = ctx.createRadialGradient(0, 0, 0, 0, 0, w * 0.32)
-+    core.addColorStop(0, 'rgba(120,200,255,0.75)')
-+    core.addColorStop(0.4, 'rgba(60,150,255,0.25)')
-+    core.addColorStop(1, 'rgba(0,0,0,0)')
-+    ctx.fillStyle = core
-+    ctx.fillRect(-w, -w, w * 2, w * 2)
-+    ctx.restore()
-+  }
-+
-+  // Floor point at screen-relative column u (-1.3..1.3) and depth z.
++  // Floor point at column u and depth z; result in P.
 +  function floorPoint(u, z, t) {
 +    const s = FOCAL / z
 +    const wave =
@@ -2136,45 +2363,77 @@ index 0000000..9974d15
 +      Math.sin(z * 0.006 + t * 0.7 + u * 1.5) * 14
 +    const y = wave * (0.5 + u * u) + u * u * 30
 +    const k = s / (FOCAL / 260) // u = ±1 reaches the screen edge at z = 260
-+    return [w / 2 + u * k * w * 0.5, horizon + (CAM_Y - y) * s * (h / 900), s]
++    P[0] = w / 2 + u * k * w * 0.5
++    P[1] = horizon + (CAM_Y - y) * s * (h / 900)
++    P[2] = s
++  }
++
++  function step(alpha) {
++    const i = Math.floor(alpha * STEPS)
++    return i < 0 ? 0 : i >= STEPS ? STEPS - 1 : i
++  }
++
++  function push(bufs, lens, i, x, y, r) {
++    const n = lens[i]
++    const buf = bufs[i]
++    buf[n] = x
++    buf[n + 1] = y
++    buf[n + 2] = r
++    lens[i] = n + 3
++  }
++
++  function fillDots(bufs, lens, styles) {
++    for (let i = 0; i < STEPS; i++) {
++      const buf = bufs[i]
++      const n = lens[i]
++      if (!n) continue
++      ctx.beginPath()
++      for (let j = 0; j < n; j += 3) {
++        const x = buf[j]
++        const y = buf[j + 1]
++        const r = buf[j + 2]
++        // Tiny dots as squares: indistinguishable at this size, far cheaper.
++        if (r < 1.1) ctx.rect(x - r, y - r, r * 2, r * 2)
++        else {
++          ctx.moveTo(x + r, y)
++          ctx.arc(x, y, r, 0, TAU)
++        }
++      }
++      ctx.fillStyle = styles[i]
++      ctx.fill()
++    }
 +  }
 +
 +  function drawFloor(t) {
-+    const zs = []
-+    for (let r = 0; r < FLOOR_ROWS; r++) {
-+      const k = r / (FLOOR_ROWS - 1)
-+      zs.push(NEAR + Math.pow(k, 1.7) * (FAR - NEAR))
-+    }
-+
 +    // Lines running into the vanishing point give the floor its depth.
 +    ctx.lineWidth = 0.7
 +    for (let c = 0; c < FLOOR_COLS; c++) {
-+      const u = (c / (FLOOR_COLS - 1) - 0.5) * 4
-+      const centre = 1 - Math.min(1, Math.abs(u) / 1.6)
++      const u = colU[c]
 +      ctx.beginPath()
 +      for (let r = 0; r < FLOOR_ROWS; r++) {
-+        const [x, y] = floorPoint(u, zs[r], t)
-+        if (r) ctx.lineTo(x, y)
-+        else ctx.moveTo(x, y)
++        floorPoint(u, rowZ[r], t)
++        if (r) ctx.lineTo(P[0], P[1])
++        else ctx.moveTo(P[0], P[1])
 +      }
-+      ctx.strokeStyle = `rgba(70,150,255,${0.05 + 0.13 * centre})`
++      ctx.strokeStyle = colStyle[c]
 +      ctx.stroke()
 +    }
 +
++    floorLen.fill(0)
 +    for (let r = FLOOR_ROWS - 1; r >= 0; r--) {
-+      const z = zs[r]
-+      const fade = 1 - (r / (FLOOR_ROWS - 1)) * 0.6
++      const z = rowZ[r]
++      const fade = rowFade[r]
 +      for (let c = 0; c < FLOOR_COLS; c++) {
-+        const u = (c / (FLOOR_COLS - 1) - 0.5) * 4
-+        const [x, y, s] = floorPoint(u, z, t)
-+        if (x < -10 || x > w + 10 || y < horizon - 40 || y > h + 10) continue
-+        const tw = 0.65 + 0.35 * Math.sin(t * 1.4 + c * 1.9 + r * 2.7)
-+        ctx.fillStyle = `rgba(70,165,255,${0.75 * fade * tw})`
-+        ctx.beginPath()
-+        ctx.arc(x, y, Math.max(0.6, s * 1.6), 0, Math.PI * 2)
-+        ctx.fill()
++        floorPoint(colU[c], z, t)
++        const px = P[0]
++        const py = P[1]
++        if (px < -10 || px > w + 10 || py < horizon - 40 || py > h + 10) continue
++        // A slow, shallow shimmer; a fast one reads as flicker.
++        const tw = 0.8 + 0.2 * Math.sin(t * 0.9 + c * 1.9 + r * 2.7)
++        push(floorBuf, floorLen, step(fade * tw), px, py, Math.max(0.6, P[2] * 1.6))
 +      }
 +    }
++    fillDots(floorBuf, floorLen, FLOOR_DOT_STYLES)
 +  }
 +
 +  function strandY(st, u, t) {
@@ -2187,18 +2446,18 @@ index 0000000..9974d15
 +  }
 +
 +  function drawStrands(t) {
-+    for (const st of strands) {
-+      const edge = 1 - Math.abs(st.d - 0.5) * 1.4
++    ctx.lineWidth = 0.9
++    strandLen.fill(0)
++    for (let s = 0; s < STRANDS; s++) {
++      const st = strands[s]
 +      ctx.beginPath()
 +      for (let i = 0; i <= STRAND_STEPS; i++) {
 +        const u = (i / STRAND_STEPS) * 2.2 - 1.1
-+        const x = w / 2 + u * w * 0.5
 +        const y = strandY(st, u, t)
-+        if (i) ctx.lineTo(x, y)
-+        else ctx.moveTo(x, y)
++        if (i) ctx.lineTo(w / 2 + u * w * 0.5, y)
++        else ctx.moveTo(w / 2 + u * w * 0.5, y)
 +      }
-+      ctx.strokeStyle = `rgba(80,170,255,${0.06 + 0.16 * edge})`
-+      ctx.lineWidth = 0.9
++      ctx.strokeStyle = st.style
 +      ctx.stroke()
 +
 +      // Particles riding along the strand, drifting slowly sideways.
@@ -2206,55 +2465,54 @@ index 0000000..9974d15
 +      for (let i = 0; i <= STRAND_STEPS; i += st.dotEvery) {
 +        const u = (((i / STRAND_STEPS) + drift) % 1) * 2.2 - 1.1
 +        const L = lift(u)
-+        const x = w / 2 + u * w * 0.5
-+        const y = strandY(st, u, t)
-+        const tw = 0.5 + 0.5 * Math.sin(t * 1.6 + i * 0.9 + st.phase)
-+        const a = (0.25 + 0.75 * L) * (0.4 + 0.6 * edge) * tw
-+        ctx.fillStyle = `rgba(120,200,255,${a})`
-+        ctx.beginPath()
-+        ctx.arc(x, y, 0.8 + L * 1.6, 0, Math.PI * 2)
-+        ctx.fill()
++        const tw = 0.7 + 0.3 * Math.sin(t * 1.1 + i * 0.9 + st.phase)
++        const a = (0.25 + 0.75 * L) * (0.4 + 0.6 * st.edge) * tw
++        push(strandBuf, strandLen, step(a), w / 2 + u * w * 0.5, strandY(st, u, t), 0.8 + L * 1.6)
 +      }
 +    }
++    fillDots(strandBuf, strandLen, STRAND_DOT_STYLES)
 +  }
 +
-+  function drawBokeh(t) {
-+    for (const b of bokeh) {
-+      if (!reduceMotion) {
-+        b.x += b.vx
-+        b.y += b.vy
-+        if (b.y < -30) { b.y = h + 30; b.x = rand(0, w) }
-+        if (b.x < -30) b.x = w + 30
-+        else if (b.x > w + 30) b.x = -30
-+      }
-+      const a = b.a * (0.7 + 0.3 * Math.sin(t * 0.6 + b.p))
-+      const g = ctx.createRadialGradient(b.x, b.y, 0, b.x, b.y, b.r)
-+      g.addColorStop(0, `rgba(70,160,255,${a})`)
-+      g.addColorStop(0.7, `rgba(70,160,255,${a * 0.6})`)
-+      g.addColorStop(1, 'rgba(70,160,255,0)')
-+      ctx.fillStyle = g
-+      ctx.beginPath()
-+      ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2)
-+      ctx.fill()
++  function drawBokeh(seconds, t) {
++    const spanX = w + 60
++    const spanY = h + 60
++    for (let i = 0; i < bokehCount; i++) {
++      const o = i * BOKEH_FIELDS
++      const r = bokeh[o + 2]
++      // Position from elapsed time, wrapped, so it never depends on frame rate.
++      const x = (((bokeh[o] + bokeh[o + 3] * seconds + 30) % spanX) + spanX) % spanX - 30
++      const y = (((bokeh[o + 1] + bokeh[o + 4] * seconds + 30) % spanY) + spanY) % spanY - 30
++      ctx.globalAlpha = bokeh[o + 5] * (0.7 + 0.3 * Math.sin(t * 0.6 + bokeh[o + 6]))
++      ctx.drawImage(sprite, x - r, y - r, r * 2, r * 2)
 +    }
++    ctx.globalAlpha = 1
 +  }
 +
-+  function frame(ms) {
-+    if (!reduceMotion) raf = requestAnimationFrame(frame)
-+    if (!w || !h) return
-+    const t = (ms / 1000) * SPEED
-+    background()
++  function draw(ms) {
++    const seconds = ms / 1000
++    const t = seconds * SPEED
++    ctx.globalCompositeOperation = 'source-over'
++    ctx.drawImage(background, 0, 0, w, h)
 +    ctx.globalCompositeOperation = 'lighter'
 +    drawFloor(t)
 +    drawStrands(t)
-+    drawBokeh(t)
++    drawBokeh(reduceMotion ? 0 : seconds, t)
 +    ctx.globalCompositeOperation = 'source-over'
 +  }
 +
++  let last = -Infinity
++  function frame(ms) {
++    raf = requestAnimationFrame(frame)
++    if (ms - last < FRAME_MS) return
++    last = ms
++    if (w && h) draw(ms)
++  }
++
++  paintSprite()
 +  // Under reduced motion, draw a single still frame on each resize.
 +  const observer = new ResizeObserver(() => {
 +    resize()
-+    if (reduceMotion) frame(8000)
++    if (reduceMotion && w && h) draw(25000)
 +  })
 +  observer.observe(canvas)
 +  if (!reduceMotion) raf = requestAnimationFrame(frame)
@@ -2510,6 +2768,19 @@ index 0000000..89dbbbe
 @@ -0,0 +1 @@
 +{"admin":{"/api/v1/app-config":{"requestId":"25fb0ce4-398d-4ac8-8aba-00b6fa45fc10","code":200,"msg":"查询成功","data":{"sys_app_logo":"https://doc-image.zhangwj.com/img/go-admin.png","sys_app_name":"INFA 監控後台"}},"/api/v1/captcha":{"code":200,"data":"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAPAAAABQCAMAAAAQlwhOAAAA81BMVEUAAABQYVI5SjsZKhtqe2w/UEEZKhsIGQp5intldmdKW0xdbl+XqJmImYqDlIV9jn8rPC1JWksHGAmFlodGV0hIWUqcrZ6TpJVdbl8QIRJXaFmLnI0iMyQ3SDl3iHlUZVZ2h3g8TT6AkYIgMSI5Sjs8TT5ldmeRopMuPzBCU0QSIxRPYFFeb2AtPi8HGAkaKxxMXU4WJxhKW0w8TT5ic2QDFAUtPi9bbF2Zqps6Szx9jn9rfG07TD1JWktFVkcQIRJ3iHkoOSpoeWomNyheb2CQoZIqOyw9Tj+HmIk+T0BvgHGXqJlJWks9Tj8xQjNoeWoDFAV0lESNAAAAAXRSTlMAQObYZgAABcxJREFUeJzsW21LKz0QTcDXomgpWi2IVfrBqqhFikWUfrgI4hX//895WJ0zmWST3WTburtP7xm5nUyyyZycJLt3rUpgAGdNMBg0gPEDnHK8wKmMX+C7DSeAh4doxi8vMYz7cOrB9nYpYzjLUbjfr5sxnN9CzXz/WcttAmdNMJmsHWM4fhzBWRMcHa2W8V84jUESX81WhkPi+zeW8QacpWAfTglO4PihDRAK4PAQjBEpwcbGMhnv78cxPjkJM85kjebLCsdbvQrnFy2YEhD+H2BISrp8lU7YwQ20P3Bs6OFwmLHNSCOmlHcO6rT9tOYZ3z9exlqzwlJIp1i7xZ5Jx67COnQskScqyG26wtZN9vjYMKbNKIkYqo6kLTilpv7HKOZrKymiRPKu6QozxkqpLzWdMmP6tAxMmbWr493dHbVxKhpmMzUej9XX15eaqgJtnK1KEht5vxWmNsFOmmCz2YwUZvjEsahSwddSKmxmxO2tTnzO4BGsfQiz8ybSFKcgmV2ByXFbhdGDs6JnzM/PT4eYL8Fc1iRkUGFU0IUUjbBerxrj+P9F2HwBBIBc0BZSAD3kgRb1Khw4mBAB3KAjpGhkKkzZu0saYCJBhBhukBhoPtpZcfRCkwF97blpBKw8bXODKGpNN29zQhnlxSVU0Fq7R2SNEMIgZKDtvUWNMnpTeR2t3ewnq5HNM/u+Cfq6rwWaH4fzGWnd6/W2XL7SyStsHtxwV2uWwlmuSk2Ygm1a9ba2tuz0FSuL9e0ovEvteS54VnxDVMFC/WQXTyaTUDZab+FEI1J8IqlzmgSiSsrv7u4GDz1rlCGcdISyjcbEPY0NQFUu3J/o+fk5RYkq1XsV5iy5PBxWZkwjolgBVmLZzxwOqBI466x0jkVuKeykZgV4fSxF4dxoC/Cdz/MKy/8Om0WOjWwULuoYCrvRypxRLIE5SL9NT9285k4DA4SIY5rC5sLoVAuMJhnFAshbR3bhdGpunjlYR7AcwJChcaXCXebGIWl00KNYGWKHpCpM7il9shFbY0o7LcyQZuxut8tThWY2QvFEVNohIq3TU4cxWEJIr2assKnr2pd6rKQ62vD4inIE5MCnhUmZXSvBTazGtAVQDEFrbzjN5OFfDpuTBCR12mp1ibLqEDNzdmn/XHltWccX5i3ya2o+HWi75rPOypeXYNzpdOSEoTnUta70G41CpSf6rGBa68FgYLoKQyRMNqeyL+ucwkJWcnmi7CtD0F10q56enhb/IiIGPkDUhZOZ1vP5fCQURoV9QgH2UcxM8zMVRLfbXYbCPD7dAw4OAowlKXLno9HICghzIu6NSiqMWBmgcNJFYYNUB4H+OGWq/f4YhZa7o5zzLIIrEvStZBdwQjCDEwMmxwnyndS90k6cWkghS67Ifh7hFIK6y/WYs4uLcsYAlTpIneQVClvmDk9l7s3HLo/HR8k44u2HL5UkhY1laWrV6XSIukk+MIZYtCzqDvnQuxQW31kxY/QZ13MctKa7J1YlKvLAXKBl5u3s7FAhTmAHcQrLdSRSIT/9y8W0HIkHoh4wUzRXSrHCaLQKmKwwvg/9ft98eeoejg/MolQozE3BsKsxbQ/pH75vvi52f1/AeGyxIE6odECra+WahgwpenF2FqXweDwWREEctR7URbYAP0Svz1Auxpi2oa3wFapbgJ+lfH19jUAkpMJXV61inP2jrqtdTCu7Nr7DhXtoFxZ4KV9oiQJuwmmrwolbdHPzFxl77bL4ZWsbFT71RgnmTZL3dbpjr3CajNxb4eoKv762gzGcihi1TOEAPuCUgV9Ftds+PuIZw2k3PhLbp+MNzi/txVs4NeHt7W2lp62L29vaGcNZE4VXZu9w1gTv7++1Hk1B7MH5TYUTbj7Ltr29vRWPsHqFb+DUq3AFPMNJws1NMeNFfyu5Ojw/V2QMx4uU3zsv/EyyNIWr/pVAmsILP5Mszar+HUgqmsJXqZ5SSiml1H8DAKN8QIMCLjUGAAAAAElFTkSuQmCC","id":"CtfoASXGxqCs9N0YUHfO","msg":"success","requestId":"9224408d-80c5-45d4-a374-fd269a024eec"},"/api/v1/getinfo":{"requestId":"e10d03fc-5f10-41fa-bd2c-abb993211080","code":200,"data":{"avatar":"https://wpimg.wallstcn.com/f778738c-e4f8-4870-b634-56703b4acafe.gif","buttons":["*:*:*"],"code":200,"deptId":1,"introduction":" am a super administrator","name":"zhangwj","permissions":["*:*:*"],"roles":["admin"],"userId":1,"userName":"admin"}},"/api/v1/menurole":{"requestId":"d964b4ec-4ab9-4669-bdfa-9f2c3a7c1508","code":200,"data":[{"menuId":537,"menuName":"SysTools","title":"系統工具","icon":"monitor","path":"/sys-tools","paths":"/0/537","menuType":"M","action":"","permission":"","parentId":0,"noCache":false,"breadcrumb":"","component":"Layout","sort":1,"visible":"0","isFrame":"1","sysApi":null,"apis":null,"dataScope":"","params":"","RoleId":0,"children":[{"menuId":10100,"menuName":"Infa10100","title":"TWIDC","icon":"server","path":"/sys-tools/twidc","paths":"","menuType":"M","action":"","permission":"","parentId":537,"noCache":false,"breadcrumb":"","component":"/infa/region/index","sort":1,"visible":"0","isFrame":"","sysApi":null,"apis":null,"dataScope":"","params":"","RoleId":0,"children":[{"menuId":10101,"menuName":"Infa10101","title":"Cacti","icon":"link","path":"/sys-tools/twidc/10101","paths":"","menuType":"C","action":"","permission":"","parentId":10100,"noCache":false,"breadcrumb":"","component":"/infa/link/index","sort":1,"visible":"0","isFrame":"","sysApi":null,"apis":null,"dataScope":"","params":"","RoleId":0,"is_select":false,"appCode":"","seedCode":null,"createBy":0,"updateBy":0,"createdAt":"2026-10-21T08:50:44.815962733Z","updatedAt":"0001-01-01T00:00:00Z"},{"menuId":10102,"menuName":"Infa10102","title":"Zabbix","icon":"link","path":"/sys-tools/twidc/10102","paths":"","menuType":"C","action":"","permission":"","parentId":10100,"noCache":false,"breadcrumb":"","component":"/infa/link/index","sort":2,"visible":"0","isFrame":"","sysApi":null,"apis":null,"dataScope":"","params":"","RoleId":0,"is_select":false,"appCode":"","seedCode":null,"createBy":0,"updateBy":0,"createdAt":"2026-10-21T08:50:44.816478058Z","updatedAt":"0001-01-01T00:00:00Z"},{"menuId":10103,"menuName":"Infa10103","title":"WAN PRTG","icon":"link","path":"/sys-tools/twidc/10103","paths":"","menuType":"C","action":"","permission":"","parentId":10100,"noCache":false,"breadcrumb":"","component":"/infa/link/index","sort":3,"visible":"0","isFrame":"","sysApi":null,"apis":null,"dataScope":"","params":"","RoleId":0,"is_select":false,"appCode":"","seedCode":null,"createBy":0,"updateBy":0,"createdAt":"2026-10-21T08:50:44.816956369Z","updatedAt":"0001-01-01T00:00:00Z"},{"menuId":10104,"menuName":"Infa10104","title":"LAN PRTG","icon":"link","path":"/sys-tools/twidc/10104","paths":"","menuType":"C","action":"","permission":"","parentId":10100,"noCache":false,"breadcrumb":"","component":"/infa/link/index","sort":4,"visible":"0","isFrame":"","sysApi":null,"apis":null,"dataScope":"","params":"","RoleId":0,"is_select":false,"appCode":"","seedCode":null,"createBy":0,"updateBy":0,"createdAt":"2026-10-21T08:50:44.817407874Z","updatedAt":"0001-01-01T00:00:00Z"},{"menuId":10105,"menuName":"Infa10105","title":"Ext PRTG","icon":"link","path":"/sys-tools/twidc/10105","paths":"","menuType":"C","action":"","permission":"","parentId":10100,"noCache":false,"breadcrumb":"","component":"/infa/link/index","sort":5,"visible":"0","isFrame":"","sysApi":null,"apis":null,"dataScope":"","params":"","RoleId":0,"is_select":false,"appCode":"","seedCode":null,"createBy":0,"updateBy":0,"createdAt":"2026-10-21T08:50:44.817807213Z","updatedAt":"0001-01-01T00:00:00Z"},{"menuId":10106,"menuName":"Infa10106","title":"Graylog","icon":"link","path":"/sys-tools/twidc/10106","paths":"","menuType":"C","action":"","permission":"","parentId":10100,"noCache":false,"breadcrumb":"","component":"/infa/link/index","sort":6,"visible":"0","isFrame":"","sysApi":null,"apis":null,"dataScope":"","params":"","RoleId":0,"is_select":false,"appCode":"","seedCode":null,"createBy":0,"updateBy":0,"createdAt":"2026-10-21T08:50:44.818149893Z","updatedAt":"0001-01-01T00:00:00Z"},{"menuId":10107,"menuName":"Infa10107","title":"Graylog2","icon":"link","path":"/sys-tools/twidc/10107","paths":"","menuType":"C","action":"","permission":"","parentId":10100,"noCache":false,"breadcrumb":"","component":"/infa/link/index","sort":7,"visible":"0","isFrame":"","sysApi":null,"apis":null,"dataScope":"","params":"","RoleId":0,"is_select":false,"appCode":"","seedCode":null,"createBy":0,"updateBy":0,"createdAt":"2026-10-21T08:50:44.818724571Z","updatedAt":"0001-01-01T00:00:00Z"},{"menuId":10108,"menuName":"Infa10108","title":"Looking glass","icon":"link","path":"/sys-tools/twidc/10108","paths":"","menuType":"C","action":"","permission":"","parentId":10100,"noCache":false,"breadcrumb":"","component":"/infa/link/index","sort":8,"visible":"0","isFrame":"","sysApi":null,"apis":null,"dataScope":"","params":"","RoleId":0,"is_select":false,"appCode":"","seedCode":null,"createBy":0,"updateBy":0,"createdAt":"2026-10-21T08:50:44.819155289Z","updatedAt":"0001-01-01T00:00:00Z"},{"menuId":10109,"menuName":"Infa10109","title":"Streaming wall","icon":"link","path":"/sys-tools/twidc/10109","paths":"","menuType":"C","action":"","permission":"","parentId":10100,"noCache":false,"breadcrumb":"","component":"/infa/link/index","sort":9,"visible":"0","isFrame":"","sysApi":null,"apis":null,"dataScope":"","params":"","RoleId":0,"is_select":false,"appCode":"","seedCode":null,"createBy":0,"updateBy":0,"createdAt":"2026-10-21T08:50:44.819566861Z","updatedAt":"0001-01-01T00:00:00Z"},{"menuId":10110,"menuName":"Infa10110","title":"haproxystat","icon":"link","path":"/sys-tools/twidc/10110","paths":"","menuType":"C","action":"","permission":"","parentId":10100,"noCache":false,"breadcrumb":"","component":"/infa/link/index","sort":10,"visible":"0","isFrame":"","sysApi":null,"apis":null,"dataScope":"","params":"","RoleId":0,"is_select":false,"appCode":"","seedCode":null,"createBy":0,"updateBy":0,"createdAt":"2026-10-21T08:50:44.819895282Z","updatedAt":"0001-01-01T00:00:00Z"},{"menuId":10111,"menuName":"Infa10111","title":"NTOP","icon":"link","path":"/sys-tools/twidc/10111","paths":"","menuType":"C","action":"","permission":"","parentId":10100,"noCache":false,"breadcrumb":"","component":"/infa/link/index","sort":11,"visible":"0","isFrame":"","sysApi":null,"apis":null,"dataScope":"","params":"","RoleId":0,"is_select":false,"appCode":"","seedCode":null,"createBy":0,"updateBy":0,"createdAt":"2026-10-21T08:50:44.820322099Z","updatedAt":"0001-01-01T00:00:00Z"},{"menuId":10112,"menuName":"Infa10112","title":"Wazuh","icon":"link","path":"/sys-tools/twidc/10112","paths":"","menuType":"C","action":"","permission":"","parentId":10100,"noCache":false,"breadcrumb":"","component":"/infa/link/index","sort":12,"visible":"0","isFrame":"","sysApi":null,"apis":null,"dataScope":"","params":"","RoleId":0,"is_select":false,"appCode":"","seedCode":null,"createBy":0,"updateBy":0,"createdAt":"2026-10-21T08:50:44.820738916Z","updatedAt":"0001-01-01T00:00:00Z"}],"is_select":false,"appCode":"","seedCode":null,"createBy":0,"updateBy":0,"createdAt":"2026-10-21T08:50:44.815444251Z","updatedAt":"0001-01-01T00:00:00Z"},{"menuId":10200,"menuName":"Infa10200","title":"JPIDC","icon":"server","path":"/sys-tools/jpidc","paths":"","menuType":"M","action":"","permission":"","parentId":537,"noCache":false,"breadcrumb":"","component":"/infa/region/index","sort":2,"visible":"0","isFrame":"","sysApi":null,"apis":null,"dataScope":"","params":"","RoleId":0,"children":[{"menuId":10201,"menuName":"Infa10201","title":"Cacti","icon":"link","path":"/sys-tools/jpidc/10201","paths":"","menuType":"C","action":"","permission":"","parentId":10200,"noCache":false,"breadcrumb":"","component":"/infa/link/index","sort":1,"visible":"0","isFrame":"","sysApi":null,"apis":null,"dataScope":"","params":"","RoleId":0,"is_select":false,"appCode":"","seedCode":null,"createBy":0,"updateBy":0,"createdAt":"2026-10-21T08:50:44.821610038Z","updatedAt":"0001-01-01T00:00:00Z"},{"menuId":10202,"menuName":"Infa10202","title":"Zabbix","icon":"link","path":"/sys-tools/jpidc/10202","paths":"","menuType":"C","action":"","permission":"","parentId":10200,"noCache":false,"breadcrumb":"","component":"/infa/link/index","sort":2,"visible":"0","isFrame":"","sysApi":null,"apis":null,"dataScope":"","params":"","RoleId":0,"is_select":false,"appCode":"","seedCode":null,"createBy":0,"updateBy":0,"createdAt":"2026-10-21T08:50:44.822010608Z","updatedAt":"0001-01-01T00:00:00Z"},{"menuId":10203,"menuName":"Infa10203","title":"PRTG","icon":"link","path":"/sys-tools/jpidc/10203","paths":"","menuType":"C","action":"","permission":"","parentId":10200,"noCache":false,"breadcrumb":"","component":"/infa/link/index","sort":3,"visible":"0","isFrame":"","sysApi":null,"apis":null,"dataScope":"","params":"","RoleId":0,"is_select":false,"appCode":"","seedCode":null,"createBy":0,"updateBy":0,"createdAt":"2026-10-21T08:50:44.822675013Z","updatedAt":"0001-01-01T00:00:00Z"},{"menuId":10204,"menuName":"Infa10204","title":"Graylog","icon":"link","path":"/sys-tools/jpidc/10204","paths":"","menuType":"C","action":"","permission":"","parentId":10200,"noCache":false,"breadcrumb":"","component":"/infa/link/index","sort":4,"visible":"0","isFrame":"","sysApi":null,"apis":null,"dataScope":"","params":"","RoleId":0,"is_select":false,"appCode":"","seedCode":null,"createBy":0,"updateBy":0,"createdAt":"2026-10-21T08:50:44.823153879Z","updatedAt":"0001-01-01T00:00:00Z"}],"is_select":false,"appCode":"","seedCode":null,"createBy":0,"updateBy":0,"createdAt":"2026-10-21T08:50:44.821164787Z","updatedAt":"0001-01-01T00:00:00Z"},{"menuId":10300,"menuName":"Infa10300","title":"PHIDC","icon":"server","path":"/sys-tools/phidc","paths":"","menuType":"M","action":"","permission":"","parentId":537,"noCache":false,"breadcrumb":"","component":"/infa/region/index","sort":3,"visible":"0","isFrame":"","sysApi":null,"apis":null,"dataScope":"","params":"","RoleId":0,"is_select":false,"appCode":"","seedCode":null,"createBy":0,"updateBy":0,"createdAt":"2026-10-21T08:50:44.823634139Z","updatedAt":"0001-01-01T00:00:00Z"},{"menuId":10400,"menuName":"Infa10400","title":"PH Office","icon":"server","path":"/sys-tools/ph-office","paths":"","menuType":"M","action":"","permission":"","parentId":537,"noCache":false,"breadcrumb":"","component":"/infa/region/index","sort":4,"visible":"0","isFrame":"","sysApi":null,"apis":null,"dataScope":"","params":"","RoleId":0,"is_select":false,"appCode":"","seedCode":null,"createBy":0,"updateBy":0,"createdAt":"2026-10-21T08:50:44.824021333Z","updatedAt":"0001-01-01T00:00:00Z"},{"menuId":10500,"menuName":"Infa10500","title":"PH Studio","icon":"server","path":"/sys-tools/ph-studio","paths":"","menuType":"M","action":"","permission":"","parentId":537,"noCache":false,"breadcrumb":"","component":"/infa/region/index","sort":5,"visible":"0","isFrame":"","sysApi":null,"apis":null,"dataScope":"","params":"","RoleId":0,"is_select":false,"appCode":"","seedCode":null,"createBy":0,"updateBy":0,"createdAt":"2026-10-21T08:50:44.82445547Z","updatedAt":"0001-01-01T00:00:00Z"},{"menuId":10600,"menuName":"Infa10600","title":"SL Office","icon":"server","path":"/sys-tools/sl-office","paths":"","menuType":"M","action":"","permission":"","parentId":537,"noCache":false,"breadcrumb":"","component":"/infa/region/index","sort":6,"visible":"0","isFrame":"","sysApi":null,"apis":null,"dataScope":"","params":"","RoleId":0,"is_select":false,"appCode":"","seedCode":null,"createBy":0,"updateBy":0,"createdAt":"2026-10-21T08:50:44.82491037Z","updatedAt":"0001-01-01T00:00:00Z"}],"is_select":false,"appCode":"","seedCode":null,"createBy":1,"updateBy":1,"createdAt":"2021-05-21T11:13:32.166Z","updatedAt":"2026-10-21T08:50:44.814402239Z"},{"menuId":2,"menuName":"Admin","title":"系統設置","icon":"system","path":"/admin","paths":"/0/2","menuType":"M","action":"无","permission":"","parentId":0,"noCache":true,"breadcrumb":"","component":"Layout","sort":2,"visible":"0","isFrame":"1","sysApi":null,"apis":null,"dataScope":"","params":"","RoleId":0,"children":[{"menuId":3,"menuName":"SysUserManage","title":"用戶管理","icon":"user","path":"/admin/sys-user","paths":"","menuType":"C","action":"无","permission":"admin:sysUser:list","parentId":2,"noCache":false,"breadcrumb":"","component":"/admin/sys-user/index","sort":1,"visible":"0","isFrame":"","sysApi":null,"apis":null,"dataScope":"","params":"","RoleId":0,"is_select":false,"appCode":"","seedCode":null,"createBy":0,"updateBy":0,"createdAt":"2021-05-20T22:08:44.526Z","updatedAt":"0001-01-01T00:00:00Z"},{"menuId":52,"menuName":"SysRoleManage","title":"角色管理","icon":"peoples","path":"/admin/sys-role","paths":"","menuType":"C","action":"无","permission":"admin:sysRole:list","parentId":2,"noCache":true,"breadcrumb":"","component":"/admin/sys-role/index","sort":2,"visible":"0","isFrame":"","sysApi":null,"apis":null,"dataScope":"","params":"","RoleId":0,"is_select":false,"appCode":"","seedCode":null,"createBy":0,"updateBy":0,"createdAt":"2021-05-20T22:08:44.526Z","updatedAt":"0001-01-01T00:00:00Z"},{"menuId":51,"menuName":"SysMenuManage","title":"選單管理","icon":"tree-table","path":"/admin/sys-menu","paths":"","menuType":"C","action":"无","permission":"admin:sysMenu:list","parentId":2,"noCache":true,"breadcrumb":"","component":"/admin/sys-menu/index","sort":3,"visible":"0","isFrame":"","sysApi":null,"apis":null,"dataScope":"","params":"","RoleId":0,"is_select":false,"appCode":"","seedCode":null,"createBy":0,"updateBy":0,"createdAt":"2021-05-20T22:08:44.526Z","updatedAt":"0001-01-01T00:00:00Z"}],"is_select":false,"appCode":"","seedCode":null,"createBy":0,"updateBy":1,"createdAt":"2021-05-20T21:58:45.679Z","updatedAt":"2026-10-21T08:50:44.814785344Z"}]},"/api/v1/user/profile":{"requestId":"39981e74-c314-405d-b2e8-1232288510db","code":200,"msg":"查询成功","data":{"posts":[{"postId":1,"postName":"首席执行官","postCode":"CEO","sort":0,"status":2,"remark":"首席执行官","createBy":1,"updateBy":1,"createdAt":"2021-05-13T19:56:37.913Z","updatedAt":"2021-05-13T19:56:37.913Z","dataScope":"","params":""}],"roles":[{"roleId":1,"roleName":"系统管理员","status":"2","roleKey":"admin","roleSort":1,"flag":"","remark":"","admin":true,"dataScope":"1","params":"","menuIds":null,"deptIds":null,"sysDept":null,"sysMenu":null,"createBy":1,"updateBy":1,"createdAt":"2021-05-13T19:56:37.913Z","updatedAt":"2021-05-13T19:56:37.913Z"}],"user":{"userId":1,"username":"admin","nickName":"zhangwj","phone":"13818888888","roleId":1,"avatar":"","sex":"1","email":"1@qq.com","deptId":1,"postId":1,"remark":"","status":"2","deptIds":[1],"postIds":[1],"roleIds":[1],"dept":{"deptId":1,"parentId":0,"deptPath":"/0/1/","deptName":"爱拓科技","sort":0,"leader":"aituo","phone":"13782218188","email":"atuo@aituo.com","status":2,"createBy":1,"updateBy":1,"createdAt":"2021-05-13T19:56:37.913Z","updatedAt":"2021-06-05T17:06:44.96Z","dataScope":"","params":"","children":null},"createBy":1,"updateBy":1,"createdAt":"2021-05-13T19:56:37.914Z","updatedAt":"2021-05-13T19:56:40.205Z"}}},"/api/v1/dict-data/option-select?dictType=sys_normal_disable":{"requestId":"7e289317-d2ba-4cd5-a310-b0fde1fc53a4","code":200,"msg":"查询成功","data":[{"label":"正常","value":"2"},{"label":"停用","value":"1"}]},"/api/v1/dict-data/option-select?dictType=sys_user_sex":{"requestId":"8c7c9243-b54f-41db-8244-be710004985c","code":200,"msg":"查询成功","data":[{"label":"男","value":"0"},{"label":"女","value":"1"},{"label":"未知","value":"2"}]},"/api/v1/sys-user?pageIndex=1&pageSize=10":{"requestId":"70d71c36-48b2-44be-aaaa-591fd3b66b21","code":200,"msg":"查询成功","data":{"count":2,"pageIndex":1,"pageSize":10,"list":[{"userId":1,"username":"admin","nickName":"zhangwj","phone":"13818888888","roleId":1,"avatar":"","sex":"1","email":"1@qq.com","deptId":1,"postId":1,"remark":"","status":"2","deptIds":[1],"postIds":[1],"roleIds":[1],"dept":{"deptId":1,"parentId":0,"deptPath":"/0/1/","deptName":"爱拓科技","sort":0,"leader":"aituo","phone":"13782218188","email":"atuo@aituo.com","status":2,"createBy":1,"updateBy":1,"createdAt":"2021-05-13T19:56:37.913Z","updatedAt":"2021-06-05T17:06:44.96Z","dataScope":"","params":"","children":null},"createBy":1,"updateBy":1,"createdAt":"2021-05-13T19:56:37.914Z","updatedAt":"2021-05-13T19:56:40.205Z"},{"userId":2,"username":"demo","nickName":"值班 Demo","phone":"0900000000","roleId":2,"avatar":"","sex":"0","email":"demo@example.com","deptId":1,"postId":0,"remark":"","status":"2","deptIds":[1],"postIds":[0],"roleIds":[2],"dept":{"deptId":1,"parentId":0,"deptPath":"/0/1/","deptName":"爱拓科技","sort":0,"leader":"aituo","phone":"13782218188","email":"atuo@aituo.com","status":2,"createBy":1,"updateBy":1,"createdAt":"2021-05-13T19:56:37.913Z","updatedAt":"2021-06-05T17:06:44.96Z","dataScope":"","params":"","children":null},"createBy":1,"updateBy":0,"createdAt":"2026-10-21T08:50:58.037637163Z","updatedAt":"2026-10-21T08:50:58.037637163Z"}]}},"/api/v1/deptTree":{"requestId":"90d7403c-92bb-455e-8d41-53cdb15add86","code":200,"data":[{"id":1,"label":"爱拓科技","children":[{"id":7,"label":"研发部","children":[]},{"id":8,"label":"运维部","children":[]},{"id":9,"label":"客服部","children":[]},{"id":10,"label":"人力资源","children":[]}]}]},"/api/v1/post?pageSize=1000":{"requestId":"6c14d6ec-96cf-44e9-b17b-7a20d5c7de54","code":200,"msg":"查询成功","data":{"count":3,"pageIndex":1,"pageSize":1000,"list":[{"postId":1,"postName":"首席执行官","postCode":"CEO","sort":0,"status":2,"remark":"首席执行官","createBy":1,"updateBy":1,"createdAt":"2021-05-13T19:56:37.913Z","updatedAt":"2021-05-13T19:56:37.913Z","dataScope":"","params":""},{"postId":2,"postName":"首席技术执行官","postCode":"CTO","sort":2,"status":2,"remark":"首席技术执行官","createBy":1,"updateBy":1,"createdAt":"2021-05-13T19:56:37.913Z","updatedAt":"2021-05-13T19:56:37.913Z","dataScope":"","params":""},{"postId":3,"postName":"首席运营官","postCode":"COO","sort":3,"status":2,"remark":"测试工程师","createBy":1,"updateBy":1,"createdAt":"2021-05-13T19:56:37.913Z","updatedAt":"2021-05-13T19:56:37.913Z","dataScope":"","params":""}]}},"/api/v1/role?pageSize=1000":{"requestId":"e2487d4b-595a-412d-82da-5e2270af5f9f","code":200,"msg":"查询成功","data":{"count":2,"pageIndex":1,"pageSize":1000,"list":[{"roleId":1,"roleName":"系统管理员","status":"2","roleKey":"admin","roleSort":1,"flag":"","remark":"","admin":true,"dataScope":"1","params":"","menuIds":null,"deptIds":null,"sysDept":null,"sysMenu":[{"menuId":537,"menuName":"SysTools","title":"系統工具","icon":"monitor","path":"/sys-tools","paths":"/0/537","menuType":"M","action":"","permission":"","parentId":0,"noCache":false,"breadcrumb":"","component":"Layout","sort":1,"visible":"0","isFrame":"1","sysApi":null,"apis":null,"dataScope":"","params":"","RoleId":0,"is_select":false,"appCode":"","seedCode":null,"createBy":1,"updateBy":1,"createdAt":"2021-05-21T11:13:32.166Z","updatedAt":"2026-10-21T08:50:44.814402239Z"},{"menuId":10100,"menuName":"Infa10100","title":"TWIDC","icon":"server","path":"/sys-tools/twidc","paths":"/0/537/10100","menuType":"M","action":"","permission":"","parentId":537,"noCache":false,"breadcrumb":"","component":"/infa/region/index","sort":1,"visible":"0","isFrame":"1","sysApi":null,"apis":null,"dataScope":"","params":"","RoleId":0,"is_select":false,"appCode":"","seedCode":null,"createBy":0,"updateBy":0,"createdAt":"2026-10-21T08:50:44.815444251Z","updatedAt":"2026-10-21T08:50:44.815444251Z"},{"menuId":10101,"menuName":"Infa10101","title":"Cacti","icon":"link","path":"/sys-tools/twidc/10101","paths":"/0/537/10100/10101","menuType":"C","action":"","permission":"","parentId":10100,"noCache":false,"breadcrumb":"","component":"/infa/link/index","sort":1,"visible":"0","isFrame":"1","sysApi":null,"apis":null,"dataScope":"","params":"","RoleId":0,"is_select":false,"appCode":"","seedCode":null,"createBy":0,"updateBy":0,"createdAt":"2026-10-21T08:50:44.815962733Z","updatedAt":"2026-10-21T08:50:44.815962733Z"},{"menuId":10102,"menuName":"Infa10102","title":"Zabbix","icon":"link","path":"/sys-tools/twidc/10102","paths":"/0/537/10100/10102","menuType":"C","action":"","permission":"","parentId":10100,"noCache":false,"breadcrumb":"","component":"/infa/link/index","sort":2,"visible":"0","isFrame":"1","sysApi":null,"apis":null,"dataScope":"","params":"","RoleId":0,"is_select":false,"appCode":"","seedCode":null,"createBy":0,"updateBy":0,"createdAt":"2026-10-21T08:50:44.816478058Z","updatedAt":"2026-10-21T08:50:44.816478058Z"},{"menuId":10103,"menuName":"Infa10103","title":"WAN PRTG","icon":"link","path":"/sys-tools/twidc/10103","paths":"/0/537/10100/10103","menuType":"C","action":"","permission":"","parentId":10100,"noCache":false,"breadcrumb":"","component":"/infa/link/index","sort":3,"visible":"0","isFrame":"1","sysApi":null,"apis":null,"dataScope":"","params":"","RoleId":0,"is_select":false,"appCode":"","seedCode":null,"createBy":0,"updateBy":0,"createdAt":"2026-10-21T08:50:44.816956369Z","updatedAt":"2026-10-21T08:50:44.816956369Z"},{"menuId":10104,"menuName":"Infa10104","title":"LAN PRTG","icon":"link","path":"/sys-tools/twidc/10104","paths":"/0/537/10100/10104","menuType":"C","action":"","permission":"","parentId":10100,"noCache":false,"breadcrumb":"","component":"/infa/link/index","sort":4,"visible":"0","isFrame":"1","sysApi":null,"apis":null,"dataScope":"","params":"","RoleId":0,"is_select":false,"appCode":"","seedCode":null,"createBy":0,"updateBy":0,"createdAt":"2026-10-21T08:50:44.817407874Z","updatedAt":"2026-10-21T08:50:44.817407874Z"},{"menuId":10105,"menuName":"Infa10105","title":"Ext PRTG","icon":"link","path":"/sys-tools/twidc/10105","paths":"/0/537/10100/10105","menuType":"C","action":"","permission":"","parentId":10100,"noCache":false,"breadcrumb":"","component":"/infa/link/index","sort":5,"visible":"0","isFrame":"1","sysApi":null,"apis":null,"dataScope":"","params":"","RoleId":0,"is_select":false,"appCode":"","seedCode":null,"createBy":0,"updateBy":0,"createdAt":"2026-10-21T08:50:44.817807213Z","updatedAt":"2026-10-21T08:50:44.817807213Z"},{"menuId":10106,"menuName":"Infa10106","title":"Graylog","icon":"link","path":"/sys-tools/twidc/10106","paths":"/0/537/10100/10106","menuType":"C","action":"","permission":"","parentId":10100,"noCache":false,"breadcrumb":"","component":"/infa/link/index","sort":6,"visible":"0","isFrame":"1","sysApi":null,"apis":null,"dataScope":"","params":"","RoleId":0,"is_select":false,"appCode":"","seedCode":null,"createBy":0,"updateBy":0,"createdAt":"2026-10-21T08:50:44.818149893Z","updatedAt":"2026-10-21T08:50:44.818149893Z"},{"menuId":10107,"menuName":"Infa10107","title":"Graylog2","icon":"link","path":"/sys-tools/twidc/10107","paths":"/0/537/10100/10107","menuType":"C","action":"","permission":"","parentId":10100,"noCache":false,"breadcrumb":"","component":"/infa/link/index","sort":7,"visible":"0","isFrame":"1","sysApi":null,"apis":null,"dataScope":"","params":"","RoleId":0,"is_select":false,"appCode":"","seedCode":null,"createBy":0,"updateBy":0,"createdAt":"2026-10-21T08:50:44.818724571Z","updatedAt":"2026-10-21T08:50:44.818724571Z"},{"menuId":10108,"menuName":"Infa10108","title":"Looking glass","icon":"link","path":"/sys-tools/twidc/10108","paths":"/0/537/10100/10108","menuType":"C","action":"","permission":"","parentId":10100,"noCache":false,"breadcrumb":"","component":"/infa/link/index","sort":8,"visible":"0","isFrame":"1","sysApi":null,"apis":null,"dataScope":"","params":"","RoleId":0,"is_select":false,"appCode":"","seedCode":null,"createBy":0,"updateBy":0,"createdAt":"2026-10-21T08:50:44.819155289Z","updatedAt":"2026-10-21T08:50:44.819155289Z"},{"menuId":10109,"menuName":"Infa10109","title":"Streaming wall","icon":"link","path":"/sys-tools/twidc/10109","paths":"/0/537/10100/10109","menuType":"C","action":"","permission":"","parentId":10100,"noCache":false,"breadcrumb":"","component":"/infa/link/index","sort":9,"visible":"0","isFrame":"1","sysApi":null,"apis":null,"dataScope":"","params":"","RoleId":0,"is_select":false,"appCode":"","seedCode":null,"createBy":0,"updateBy":0,"createdAt":"2026-10-21T08:50:44.819566861Z","updatedAt":"2026-10-21T08:50:44.819566861Z"},{"menuId":10110,"menuName":"Infa10110","title":"haproxystat","icon":"link","path":"/sys-tools/twidc/10110","paths":"/0/537/10100/10110","menuType":"C","action":"","permission":"","parentId":10100,"noCache":false,"breadcrumb":"","component":"/infa/link/index","sort":10,"visible":"0","isFrame":"1","sysApi":null,"apis":null,"dataScope":"","params":"","RoleId":0,"is_select":false,"appCode":"","seedCode":null,"createBy":0,"updateBy":0,"createdAt":"2026-10-21T08:50:44.819895282Z","updatedAt":"2026-10-21T08:50:44.819895282Z"},{"menuId":10111,"menuName":"Infa10111","title":"NTOP","icon":"link","path":"/sys-tools/twidc/10111","paths":"/0/537/10100/10111","menuType":"C","action":"","permission":"","parentId":10100,"noCache":false,"breadcrumb":"","component":"/infa/link/index","sort":11,"visible":"0","isFrame":"1","sysApi":null,"apis":null,"dataScope":"","params":"","RoleId":0,"is_select":false,"appCode":"","seedCode":null,"createBy":0,"updateBy":0,"createdAt":"2026-10-21T08:50:44.820322099Z","updatedAt":"2026-10-21T08:50:44.820322099Z"},{"menuId":10112,"menuName":"Infa10112","title":"Wazuh","icon":"link","path":"/sys-tools/twidc/10112","paths":"/0/537/10100/10112","menuType":"C","action":"","permission":"","parentId":10100,"noCache":false,"breadcrumb":"","component":"/infa/link/index","sort":12,"visible":"0","isFrame":"1","sysApi":null,"apis":null,"dataScope":"","params":"","RoleId":0,"is_select":false,"appCode":"","seedCode":null,"createBy":0,"updateBy":0,"createdAt":"2026-10-21T08:50:44.820738916Z","updatedAt":"2026-10-21T08:50:44.820738916Z"},{"menuId":10200,"menuName":"Infa10200","title":"JPIDC","icon":"server","path":"/sys-tools/jpidc","paths":"/0/537/10200","menuType":"M","action":"","permission":"","parentId":537,"noCache":false,"breadcrumb":"","component":"/infa/region/index","sort":2,"visible":"0","isFrame":"1","sysApi":null,"apis":null,"dataScope":"","params":"","RoleId":0,"is_select":false,"appCode":"","seedCode":null,"createBy":0,"updateBy":0,"createdAt":"2026-10-21T08:50:44.821164787Z","updatedAt":"2026-10-21T08:50:44.821164787Z"},{"menuId":10201,"menuName":"Infa10201","title":"Cacti","icon":"link","path":"/sys-tools/jpidc/10201","paths":"/0/537/10200/10201","menuType":"C","action":"","permission":"","parentId":10200,"noCache":false,"breadcrumb":"","component":"/infa/link/index","sort":1,"visible":"0","isFrame":"1","sysApi":null,"apis":null,"dataScope":"","params":"","RoleId":0,"is_select":false,"appCode":"","seedCode":null,"createBy":0,"updateBy":0,"createdAt":"2026-10-21T08:50:44.821610038Z","updatedAt":"2026-10-21T08:50:44.821610038Z"},{"menuId":10202,"menuName":"Infa10202","title":"Zabbix","icon":"link","path":"/sys-tools/jpidc/10202","paths":"/0/537/10200/10202","menuType":"C","action":"","permission":"","parentId":10200,"noCache":false,"breadcrumb":"","component":"/infa/link/index","sort":2,"visible":"0","isFrame":"1","sysApi":null,"apis":null,"dataScope":"","params":"","RoleId":0,"is_select":false,"appCode":"","seedCode":null,"createBy":0,"updateBy":0,"createdAt":"2026-10-21T08:50:44.822010608Z","updatedAt":"2026-10-21T08:50:44.822010608Z"},{"menuId":10203,"menuName":"Infa10203","title":"PRTG","icon":"link","path":"/sys-tools/jpidc/10203","paths":"/0/537/10200/10203","menuType":"C","action":"","permission":"","parentId":10200,"noCache":false,"breadcrumb":"","component":"/infa/link/index","sort":3,"visible":"0","isFrame":"1","sysApi":null,"apis":null,"dataScope":"","params":"","RoleId":0,"is_select":false,"appCode":"","seedCode":null,"createBy":0,"updateBy":0,"createdAt":"2026-10-21T08:50:44.822675013Z","updatedAt":"2026-10-21T08:50:44.822675013Z"},{"menuId":10204,"menuName":"Infa10204","title":"Graylog","icon":"link","path":"/sys-tools/jpidc/10204","paths":"/0/537/10200/10204","menuType":"C","action":"","permission":"","parentId":10200,"noCache":false,"breadcrumb":"","component":"/infa/link/index","sort":4,"visible":"0","isFrame":"1","sysApi":null,"apis":null,"dataScope":"","params":"","RoleId":0,"is_select":false,"appCode":"","seedCode":null,"createBy":0,"updateBy":0,"createdAt":"2026-10-21T08:50:44.823153879Z","updatedAt":"2026-10-21T08:50:44.823153879Z"},{"menuId":10300,"menuName":"Infa10300","title":"PHIDC","icon":"server","path":"/sys-tools/phidc","paths":"/0/537/10300","menuType":"M","action":"","permission":"","parentId":537,"noCache":false,"breadcrumb":"","component":"/infa/region/index","sort":3,"visible":"0","isFrame":"1","sysApi":null,"apis":null,"dataScope":"","params":"","RoleId":0,"is_select":false,"appCode":"","seedCode":null,"createBy":0,"updateBy":0,"createdAt":"2026-10-21T08:50:44.823634139Z","updatedAt":"2026-10-21T08:50:44.823634139Z"},{"menuId":10400,"menuName":"Infa10400","title":"PH Office","icon":"server","path":"/sys-tools/ph-office","paths":"/0/537/10400","menuType":"M","action":"","permission":"","parentId":537,"noCache":false,"breadcrumb":"","component":"/infa/region/index","sort":4,"visible":"0","isFrame":"1","sysApi":null,"apis":null,"dataScope":"","params":"","RoleId":0,"is_select":false,"appCode":"","seedCode":null,"createBy":0,"updateBy":0,"createdAt":"2026-10-21T08:50:44.824021333Z","updatedAt":"2026-10-21T08:50:44.824021333Z"},{"menuId":10500,"menuName":"Infa10500","title":"PH Studio","icon":"server","path":"/sys-tools/ph-studio","paths":"/0/537/10500","menuType":"M","action":"","permission":"","parentId":537,"noCache":false,"breadcrumb":"","component":"/infa/region/index","sort":5,"visible":"0","isFrame":"1","sysApi":null,"apis":null,"dataScope":"","params":"","RoleId":0,"is_select":false,"appCode":"","seedCode":null,"createBy":0,"updateBy":0,"createdAt":"2026-10-21T08:50:44.82445547Z","updatedAt":"2026-10-21T08:50:44.82445547Z"},{"menuId":10600,"menuName":"Infa10600","title":"SL Office","icon":"server","path":"/sys-tools/sl-office","paths":"/0/537/10600","menuType":"M","action":"","permission":"","parentId":537,"noCache":false,"breadcrumb":"","component":"/infa/region/index","sort":6,"visible":"0","isFrame":"1","sysApi":null,"apis":null,"dataScope":"","params":"","RoleId":0,"is_select":false,"appCode":"","seedCode":null,"createBy":0,"updateBy":0,"createdAt":"2026-10-21T08:50:44.82491037Z","updatedAt":"2026-10-21T08:50:44.82491037Z"}],"createBy":1,"updateBy":1,"createdAt":"2021-05-13T19:56:37.913Z","updatedAt":"2021-05-13T19:56:37.913Z"},{"roleId":2,"roleName":"TW 維運","status":"2","roleKey":"tw-ops","roleSort":1,"flag":"","remark":"","admin":false,"dataScope":"1","params":"","menuIds":null,"deptIds":null,"sysDept":null,"sysMenu":[{"menuId":537,"menuName":"SysTools","title":"系統工具","icon":"monitor","path":"/sys-tools","paths":"/0/537","menuType":"M","action":"","permission":"","parentId":0,"noCache":false,"breadcrumb":"","component":"Layout","sort":1,"visible":"0","isFrame":"1","sysApi":null,"apis":null,"dataScope":"","params":"","RoleId":0,"is_select":false,"appCode":"","seedCode":null,"createBy":1,"updateBy":1,"createdAt":"2021-05-21T11:13:32.166Z","updatedAt":"2026-10-21T08:50:44.814402239Z"},{"menuId":10100,"menuName":"Infa10100","title":"TWIDC","icon":"server","path":"/sys-tools/twidc","paths":"/0/537/10100","menuType":"M","action":"","permission":"","parentId":537,"noCache":false,"breadcrumb":"","component":"/infa/region/index","sort":1,"visible":"0","isFrame":"1","sysApi":null,"apis":null,"dataScope":"","params":"","RoleId":0,"is_select":false,"appCode":"","seedCode":null,"createBy":0,"updateBy":0,"createdAt":"2026-10-21T08:50:44.815444251Z","updatedAt":"2026-10-21T08:50:44.815444251Z"},{"menuId":10101,"menuName":"Infa10101","title":"Cacti","icon":"link","path":"/sys-tools/twidc/10101","paths":"/0/537/10100/10101","menuType":"C","action":"","permission":"","parentId":10100,"noCache":false,"breadcrumb":"","component":"/infa/link/index","sort":1,"visible":"0","isFrame":"1","sysApi":null,"apis":null,"dataScope":"","params":"","RoleId":0,"is_select":false,"appCode":"","seedCode":null,"createBy":0,"updateBy":0,"createdAt":"2026-10-21T08:50:44.815962733Z","updatedAt":"2026-10-21T08:50:44.815962733Z"},{"menuId":10102,"menuName":"Infa10102","title":"Zabbix","icon":"link","path":"/sys-tools/twidc/10102","paths":"/0/537/10100/10102","menuType":"C","action":"","permission":"","parentId":10100,"noCache":false,"breadcrumb":"","component":"/infa/link/index","sort":2,"visible":"0","isFrame":"1","sysApi":null,"apis":null,"dataScope":"","params":"","RoleId":0,"is_select":false,"appCode":"","seedCode":null,"createBy":0,"updateBy":0,"createdAt":"2026-10-21T08:50:44.816478058Z","updatedAt":"2026-10-21T08:50:44.816478058Z"},{"menuId":10103,"menuName":"Infa10103","title":"WAN PRTG","icon":"link","path":"/sys-tools/twidc/10103","paths":"/0/537/10100/10103","menuType":"C","action":"","permission":"","parentId":10100,"noCache":false,"breadcrumb":"","component":"/infa/link/index","sort":3,"visible":"0","isFrame":"1","sysApi":null,"apis":null,"dataScope":"","params":"","RoleId":0,"is_select":false,"appCode":"","seedCode":null,"createBy":0,"updateBy":0,"createdAt":"2026-10-21T08:50:44.816956369Z","updatedAt":"2026-10-21T08:50:44.816956369Z"},{"menuId":10104,"menuName":"Infa10104","title":"LAN PRTG","icon":"link","path":"/sys-tools/twidc/10104","paths":"/0/537/10100/10104","menuType":"C","action":"","permission":"","parentId":10100,"noCache":false,"breadcrumb":"","component":"/infa/link/index","sort":4,"visible":"0","isFrame":"1","sysApi":null,"apis":null,"dataScope":"","params":"","RoleId":0,"is_select":false,"appCode":"","seedCode":null,"createBy":0,"updateBy":0,"createdAt":"2026-10-21T08:50:44.817407874Z","updatedAt":"2026-10-21T08:50:44.817407874Z"},{"menuId":10106,"menuName":"Infa10106","title":"Graylog","icon":"link","path":"/sys-tools/twidc/10106","paths":"/0/537/10100/10106","menuType":"C","action":"","permission":"","parentId":10100,"noCache":false,"breadcrumb":"","component":"/infa/link/index","sort":6,"visible":"0","isFrame":"1","sysApi":null,"apis":null,"dataScope":"","params":"","RoleId":0,"is_select":false,"appCode":"","seedCode":null,"createBy":0,"updateBy":0,"createdAt":"2026-10-21T08:50:44.818149893Z","updatedAt":"2026-10-21T08:50:44.818149893Z"},{"menuId":10200,"menuName":"Infa10200","title":"JPIDC","icon":"server","path":"/sys-tools/jpidc","paths":"/0/537/10200","menuType":"M","action":"","permission":"","parentId":537,"noCache":false,"breadcrumb":"","component":"/infa/region/index","sort":2,"visible":"0","isFrame":"1","sysApi":null,"apis":null,"dataScope":"","params":"","RoleId":0,"is_select":false,"appCode":"","seedCode":null,"createBy":0,"updateBy":0,"createdAt":"2026-10-21T08:50:44.821164787Z","updatedAt":"2026-10-21T08:50:44.821164787Z"},{"menuId":10202,"menuName":"Infa10202","title":"Zabbix","icon":"link","path":"/sys-tools/jpidc/10202","paths":"/0/537/10200/10202","menuType":"C","action":"","permission":"","parentId":10200,"noCache":false,"breadcrumb":"","component":"/infa/link/index","sort":2,"visible":"0","isFrame":"1","sysApi":null,"apis":null,"dataScope":"","params":"","RoleId":0,"is_select":false,"appCode":"","seedCode":null,"createBy":0,"updateBy":0,"createdAt":"2026-10-21T08:50:44.822010608Z","updatedAt":"2026-10-21T08:50:44.822010608Z"}],"createBy":0,"updateBy":0,"createdAt":"2026-10-21T08:50:57.91807613Z","updatedAt":"2026-10-21T08:50:57.91807613Z"}]}},"/api/v1/configKey/sys_user_initPassword":{"requestId":"9612e4b4-6856-4123-91ed-151af5bd647d","code":200,"data":{"configKey":"sys_user_initPassword","configValue":"123456"}},"/api/v1/sys-user/2":{"requestId":"082ac42c-a457-455e-bc35-b0f0fc9b6181","code":200,"msg":"查询成功","data":{"userId":2,"username":"demo","nickName":"值班 Demo","phone":"0900000000","roleId":2,"avatar":"","sex":"0","email":"demo@example.com","deptId":1,"postId":0,"remark":"","status":"2","deptIds":[1],"postIds":[0],"roleIds":[2],"dept":null,"createBy":1,"updateBy":0,"createdAt":"2026-10-21T08:50:58.037637163Z","updatedAt":"2026-10-21T08:50:58.037637163Z"}},"/api/v1/sys-user/1":{"requestId":"52bf97c6-b6ab-42d5-8b5c-11461944f4de","code":200,"msg":"查询成功","data":{"userId":1,"username":"admin","nickName":"zhangwj","phone":"13818888888","roleId":1,"avatar":"","sex":"1","email":"1@qq.com","deptId":1,"postId":1,"remark":"","status":"2","deptIds":[1],"postIds":[1],"roleIds":[1],"dept":null,"createBy":1,"updateBy":1,"createdAt":"2021-05-13T19:56:37.914Z","updatedAt":"2021-05-13T19:56:40.205Z"}},"/api/v1/roleMenuTreeselect/0":{"requestId":"c55bd65c-5ce4-4062-b28f-2b6de322a96c","code":200,"msg":"获取成功","data":{"checkedKeys":[],"menus":[{"id":2,"label":"系統設置","children":[{"id":3,"label":"用戶管理","children":[{"id":43,"label":"新增管理员"},{"id":44,"label":"查询管理员"},{"id":45,"label":"修改管理员"},{"id":46,"label":"删除管理员"}]},{"id":51,"label":"選單管理","children":[{"id":220,"label":"新增菜单"},{"id":221,"label":"修改菜单"},{"id":222,"label":"查询菜单"},{"id":223,"label":"删除菜单"}]},{"id":52,"label":"角色管理","children":[{"id":224,"label":"新增角色"},{"id":225,"label":"查询角色"},{"id":226,"label":"修改角色"},{"id":227,"label":"删除角色"}]}]},{"id":537,"label":"系統工具","children":[{"id":10100,"label":"TWIDC","children":[{"id":10101,"label":"Cacti"},{"id":10102,"label":"Zabbix"},{"id":10103,"label":"WAN PRTG"},{"id":10104,"label":"LAN PRTG"},{"id":10105,"label":"Ext PRTG"},{"id":10106,"label":"Graylog"},{"id":10107,"label":"Graylog2"},{"id":10108,"label":"Looking glass"},{"id":10109,"label":"Streaming wall"},{"id":10110,"label":"haproxystat"},{"id":10111,"label":"NTOP"},{"id":10112,"label":"Wazuh"}]},{"id":10200,"label":"JPIDC","children":[{"id":10201,"label":"Cacti"},{"id":10202,"label":"Zabbix"},{"id":10203,"label":"PRTG"},{"id":10204,"label":"Graylog"}]},{"id":10300,"label":"PHIDC"},{"id":10400,"label":"PH Office"},{"id":10500,"label":"PH Studio"},{"id":10600,"label":"SL Office"}]}]}},"/api/v1/role?pageIndex=1&pageSize=10":{"requestId":"3c64e5d2-5da6-40b7-b90b-fb530a060862","code":200,"msg":"查询成功","data":{"count":2,"pageIndex":1,"pageSize":10,"list":[{"roleId":1,"roleName":"系统管理员","status":"2","roleKey":"admin","roleSort":1,"flag":"","remark":"","admin":true,"dataScope":"1","params":"","menuIds":null,"deptIds":null,"sysDept":null,"sysMenu":[{"menuId":537,"menuName":"SysTools","title":"系統工具","icon":"monitor","path":"/sys-tools","paths":"/0/537","menuType":"M","action":"","permission":"","parentId":0,"noCache":false,"breadcrumb":"","component":"Layout","sort":1,"visible":"0","isFrame":"1","sysApi":null,"apis":null,"dataScope":"","params":"","RoleId":0,"is_select":false,"appCode":"","seedCode":null,"createBy":1,"updateBy":1,"createdAt":"2021-05-21T11:13:32.166Z","updatedAt":"2026-10-21T08:50:44.814402239Z"},{"menuId":10100,"menuName":"Infa10100","title":"TWIDC","icon":"server","path":"/sys-tools/twidc","paths":"/0/537/10100","menuType":"M","action":"","permission":"","parentId":537,"noCache":false,"breadcrumb":"","component":"/infa/region/index","sort":1,"visible":"0","isFrame":"1","sysApi":null,"apis":null,"dataScope":"","params":"","RoleId":0,"is_select":false,"appCode":"","seedCode":null,"createBy":0,"updateBy":0,"createdAt":"2026-10-21T08:50:44.815444251Z","updatedAt":"2026-10-21T08:50:44.815444251Z"},{"menuId":10101,"menuName":"Infa10101","title":"Cacti","icon":"link","path":"/sys-tools/twidc/10101","paths":"/0/537/10100/10101","menuType":"C","action":"","permission":"","parentId":10100,"noCache":false,"breadcrumb":"","component":"/infa/link/index","sort":1,"visible":"0","isFrame":"1","sysApi":null,"apis":null,"dataScope":"","params":"","RoleId":0,"is_select":false,"appCode":"","seedCode":null,"createBy":0,"updateBy":0,"createdAt":"2026-10-21T08:50:44.815962733Z","updatedAt":"2026-10-21T08:50:44.815962733Z"},{"menuId":10102,"menuName":"Infa10102","title":"Zabbix","icon":"link","path":"/sys-tools/twidc/10102","paths":"/0/537/10100/10102","menuType":"C","action":"","permission":"","parentId":10100,"noCache":false,"breadcrumb":"","component":"/infa/link/index","sort":2,"visible":"0","isFrame":"1","sysApi":null,"apis":null,"dataScope":"","params":"","RoleId":0,"is_select":false,"appCode":"","seedCode":null,"createBy":0,"updateBy":0,"createdAt":"2026-10-21T08:50:44.816478058Z","updatedAt":"2026-10-21T08:50:44.816478058Z"},{"menuId":10103,"menuName":"Infa10103","title":"WAN PRTG","icon":"link","path":"/sys-tools/twidc/10103","paths":"/0/537/10100/10103","menuType":"C","action":"","permission":"","parentId":10100,"noCache":false,"breadcrumb":"","component":"/infa/link/index","sort":3,"visible":"0","isFrame":"1","sysApi":null,"apis":null,"dataScope":"","params":"","RoleId":0,"is_select":false,"appCode":"","seedCode":null,"createBy":0,"updateBy":0,"createdAt":"2026-10-21T08:50:44.816956369Z","updatedAt":"2026-10-21T08:50:44.816956369Z"},{"menuId":10104,"menuName":"Infa10104","title":"LAN PRTG","icon":"link","path":"/sys-tools/twidc/10104","paths":"/0/537/10100/10104","menuType":"C","action":"","permission":"","parentId":10100,"noCache":false,"breadcrumb":"","component":"/infa/link/index","sort":4,"visible":"0","isFrame":"1","sysApi":null,"apis":null,"dataScope":"","params":"","RoleId":0,"is_select":false,"appCode":"","seedCode":null,"createBy":0,"updateBy":0,"createdAt":"2026-10-21T08:50:44.817407874Z","updatedAt":"2026-10-21T08:50:44.817407874Z"},{"menuId":10105,"menuName":"Infa10105","title":"Ext PRTG","icon":"link","path":"/sys-tools/twidc/10105","paths":"/0/537/10100/10105","menuType":"C","action":"","permission":"","parentId":10100,"noCache":false,"breadcrumb":"","component":"/infa/link/index","sort":5,"visible":"0","isFrame":"1","sysApi":null,"apis":null,"dataScope":"","params":"","RoleId":0,"is_select":false,"appCode":"","seedCode":null,"createBy":0,"updateBy":0,"createdAt":"2026-10-21T08:50:44.817807213Z","updatedAt":"2026-10-21T08:50:44.817807213Z"},{"menuId":10106,"menuName":"Infa10106","title":"Graylog","icon":"link","path":"/sys-tools/twidc/10106","paths":"/0/537/10100/10106","menuType":"C","action":"","permission":"","parentId":10100,"noCache":false,"breadcrumb":"","component":"/infa/link/index","sort":6,"visible":"0","isFrame":"1","sysApi":null,"apis":null,"dataScope":"","params":"","RoleId":0,"is_select":false,"appCode":"","seedCode":null,"createBy":0,"updateBy":0,"createdAt":"2026-10-21T08:50:44.818149893Z","updatedAt":"2026-10-21T08:50:44.818149893Z"},{"menuId":10107,"menuName":"Infa10107","title":"Graylog2","icon":"link","path":"/sys-tools/twidc/10107","paths":"/0/537/10100/10107","menuType":"C","action":"","permission":"","parentId":10100,"noCache":false,"breadcrumb":"","component":"/infa/link/index","sort":7,"visible":"0","isFrame":"1","sysApi":null,"apis":null,"dataScope":"","params":"","RoleId":0,"is_select":false,"appCode":"","seedCode":null,"createBy":0,"updateBy":0,"createdAt":"2026-10-21T08:50:44.818724571Z","updatedAt":"2026-10-21T08:50:44.818724571Z"},{"menuId":10108,"menuName":"Infa10108","title":"Looking glass","icon":"link","path":"/sys-tools/twidc/10108","paths":"/0/537/10100/10108","menuType":"C","action":"","permission":"","parentId":10100,"noCache":false,"breadcrumb":"","component":"/infa/link/index","sort":8,"visible":"0","isFrame":"1","sysApi":null,"apis":null,"dataScope":"","params":"","RoleId":0,"is_select":false,"appCode":"","seedCode":null,"createBy":0,"updateBy":0,"createdAt":"2026-10-21T08:50:44.819155289Z","updatedAt":"2026-10-21T08:50:44.819155289Z"},{"menuId":10109,"menuName":"Infa10109","title":"Streaming wall","icon":"link","path":"/sys-tools/twidc/10109","paths":"/0/537/10100/10109","menuType":"C","action":"","permission":"","parentId":10100,"noCache":false,"breadcrumb":"","component":"/infa/link/index","sort":9,"visible":"0","isFrame":"1","sysApi":null,"apis":null,"dataScope":"","params":"","RoleId":0,"is_select":false,"appCode":"","seedCode":null,"createBy":0,"updateBy":0,"createdAt":"2026-10-21T08:50:44.819566861Z","updatedAt":"2026-10-21T08:50:44.819566861Z"},{"menuId":10110,"menuName":"Infa10110","title":"haproxystat","icon":"link","path":"/sys-tools/twidc/10110","paths":"/0/537/10100/10110","menuType":"C","action":"","permission":"","parentId":10100,"noCache":false,"breadcrumb":"","component":"/infa/link/index","sort":10,"visible":"0","isFrame":"1","sysApi":null,"apis":null,"dataScope":"","params":"","RoleId":0,"is_select":false,"appCode":"","seedCode":null,"createBy":0,"updateBy":0,"createdAt":"2026-10-21T08:50:44.819895282Z","updatedAt":"2026-10-21T08:50:44.819895282Z"},{"menuId":10111,"menuName":"Infa10111","title":"NTOP","icon":"link","path":"/sys-tools/twidc/10111","paths":"/0/537/10100/10111","menuType":"C","action":"","permission":"","parentId":10100,"noCache":false,"breadcrumb":"","component":"/infa/link/index","sort":11,"visible":"0","isFrame":"1","sysApi":null,"apis":null,"dataScope":"","params":"","RoleId":0,"is_select":false,"appCode":"","seedCode":null,"createBy":0,"updateBy":0,"createdAt":"2026-10-21T08:50:44.820322099Z","updatedAt":"2026-10-21T08:50:44.820322099Z"},{"menuId":10112,"menuName":"Infa10112","title":"Wazuh","icon":"link","path":"/sys-tools/twidc/10112","paths":"/0/537/10100/10112","menuType":"C","action":"","permission":"","parentId":10100,"noCache":false,"breadcrumb":"","component":"/infa/link/index","sort":12,"visible":"0","isFrame":"1","sysApi":null,"apis":null,"dataScope":"","params":"","RoleId":0,"is_select":false,"appCode":"","seedCode":null,"createBy":0,"updateBy":0,"createdAt":"2026-10-21T08:50:44.820738916Z","updatedAt":"2026-10-21T08:50:44.820738916Z"},{"menuId":10200,"menuName":"Infa10200","title":"JPIDC","icon":"server","path":"/sys-tools/jpidc","paths":"/0/537/10200","menuType":"M","action":"","permission":"","parentId":537,"noCache":false,"breadcrumb":"","component":"/infa/region/index","sort":2,"visible":"0","isFrame":"1","sysApi":null,"apis":null,"dataScope":"","params":"","RoleId":0,"is_select":false,"appCode":"","seedCode":null,"createBy":0,"updateBy":0,"createdAt":"2026-10-21T08:50:44.821164787Z","updatedAt":"2026-10-21T08:50:44.821164787Z"},{"menuId":10201,"menuName":"Infa10201","title":"Cacti","icon":"link","path":"/sys-tools/jpidc/10201","paths":"/0/537/10200/10201","menuType":"C","action":"","permission":"","parentId":10200,"noCache":false,"breadcrumb":"","component":"/infa/link/index","sort":1,"visible":"0","isFrame":"1","sysApi":null,"apis":null,"dataScope":"","params":"","RoleId":0,"is_select":false,"appCode":"","seedCode":null,"createBy":0,"updateBy":0,"createdAt":"2026-10-21T08:50:44.821610038Z","updatedAt":"2026-10-21T08:50:44.821610038Z"},{"menuId":10202,"menuName":"Infa10202","title":"Zabbix","icon":"link","path":"/sys-tools/jpidc/10202","paths":"/0/537/10200/10202","menuType":"C","action":"","permission":"","parentId":10200,"noCache":false,"breadcrumb":"","component":"/infa/link/index","sort":2,"visible":"0","isFrame":"1","sysApi":null,"apis":null,"dataScope":"","params":"","RoleId":0,"is_select":false,"appCode":"","seedCode":null,"createBy":0,"updateBy":0,"createdAt":"2026-10-21T08:50:44.822010608Z","updatedAt":"2026-10-21T08:50:44.822010608Z"},{"menuId":10203,"menuName":"Infa10203","title":"PRTG","icon":"link","path":"/sys-tools/jpidc/10203","paths":"/0/537/10200/10203","menuType":"C","action":"","permission":"","parentId":10200,"noCache":false,"breadcrumb":"","component":"/infa/link/index","sort":3,"visible":"0","isFrame":"1","sysApi":null,"apis":null,"dataScope":"","params":"","RoleId":0,"is_select":false,"appCode":"","seedCode":null,"createBy":0,"updateBy":0,"createdAt":"2026-10-21T08:50:44.822675013Z","updatedAt":"2026-10-21T08:50:44.822675013Z"},{"menuId":10204,"menuName":"Infa10204","title":"Graylog","icon":"link","path":"/sys-tools/jpidc/10204","paths":"/0/537/10200/10204","menuType":"C","action":"","permission":"","parentId":10200,"noCache":false,"breadcrumb":"","component":"/infa/link/index","sort":4,"visible":"0","isFrame":"1","sysApi":null,"apis":null,"dataScope":"","params":"","RoleId":0,"is_select":false,"appCode":"","seedCode":null,"createBy":0,"updateBy":0,"createdAt":"2026-10-21T08:50:44.823153879Z","updatedAt":"2026-10-21T08:50:44.823153879Z"},{"menuId":10300,"menuName":"Infa10300","title":"PHIDC","icon":"server","path":"/sys-tools/phidc","paths":"/0/537/10300","menuType":"M","action":"","permission":"","parentId":537,"noCache":false,"breadcrumb":"","component":"/infa/region/index","sort":3,"visible":"0","isFrame":"1","sysApi":null,"apis":null,"dataScope":"","params":"","RoleId":0,"is_select":false,"appCode":"","seedCode":null,"createBy":0,"updateBy":0,"createdAt":"2026-10-21T08:50:44.823634139Z","updatedAt":"2026-10-21T08:50:44.823634139Z"},{"menuId":10400,"menuName":"Infa10400","title":"PH Office","icon":"server","path":"/sys-tools/ph-office","paths":"/0/537/10400","menuType":"M","action":"","permission":"","parentId":537,"noCache":false,"breadcrumb":"","component":"/infa/region/index","sort":4,"visible":"0","isFrame":"1","sysApi":null,"apis":null,"dataScope":"","params":"","RoleId":0,"is_select":false,"appCode":"","seedCode":null,"createBy":0,"updateBy":0,"createdAt":"2026-10-21T08:50:44.824021333Z","updatedAt":"2026-10-21T08:50:44.824021333Z"},{"menuId":10500,"menuName":"Infa10500","title":"PH Studio","icon":"server","path":"/sys-tools/ph-studio","paths":"/0/537/10500","menuType":"M","action":"","permission":"","parentId":537,"noCache":false,"breadcrumb":"","component":"/infa/region/index","sort":5,"visible":"0","isFrame":"1","sysApi":null,"apis":null,"dataScope":"","params":"","RoleId":0,"is_select":false,"appCode":"","seedCode":null,"createBy":0,"updateBy":0,"createdAt":"2026-10-21T08:50:44.82445547Z","updatedAt":"2026-10-21T08:50:44.82445547Z"},{"menuId":10600,"menuName":"Infa10600","title":"SL Office","icon":"server","path":"/sys-tools/sl-office","paths":"/0/537/10600","menuType":"M","action":"","permission":"","parentId":537,"noCache":false,"breadcrumb":"","component":"/infa/region/index","sort":6,"visible":"0","isFrame":"1","sysApi":null,"apis":null,"dataScope":"","params":"","RoleId":0,"is_select":false,"appCode":"","seedCode":null,"createBy":0,"updateBy":0,"createdAt":"2026-10-21T08:50:44.82491037Z","updatedAt":"2026-10-21T08:50:44.82491037Z"}],"createBy":1,"updateBy":1,"createdAt":"2021-05-13T19:56:37.913Z","updatedAt":"2021-05-13T19:56:37.913Z"},{"roleId":2,"roleName":"TW 維運","status":"2","roleKey":"tw-ops","roleSort":1,"flag":"","remark":"","admin":false,"dataScope":"1","params":"","menuIds":null,"deptIds":null,"sysDept":null,"sysMenu":[{"menuId":537,"menuName":"SysTools","title":"系統工具","icon":"monitor","path":"/sys-tools","paths":"/0/537","menuType":"M","action":"","permission":"","parentId":0,"noCache":false,"breadcrumb":"","component":"Layout","sort":1,"visible":"0","isFrame":"1","sysApi":null,"apis":null,"dataScope":"","params":"","RoleId":0,"is_select":false,"appCode":"","seedCode":null,"createBy":1,"updateBy":1,"createdAt":"2021-05-21T11:13:32.166Z","updatedAt":"2026-10-21T08:50:44.814402239Z"},{"menuId":10100,"menuName":"Infa10100","title":"TWIDC","icon":"server","path":"/sys-tools/twidc","paths":"/0/537/10100","menuType":"M","action":"","permission":"","parentId":537,"noCache":false,"breadcrumb":"","component":"/infa/region/index","sort":1,"visible":"0","isFrame":"1","sysApi":null,"apis":null,"dataScope":"","params":"","RoleId":0,"is_select":false,"appCode":"","seedCode":null,"createBy":0,"updateBy":0,"createdAt":"2026-10-21T08:50:44.815444251Z","updatedAt":"2026-10-21T08:50:44.815444251Z"},{"menuId":10101,"menuName":"Infa10101","title":"Cacti","icon":"link","path":"/sys-tools/twidc/10101","paths":"/0/537/10100/10101","menuType":"C","action":"","permission":"","parentId":10100,"noCache":false,"breadcrumb":"","component":"/infa/link/index","sort":1,"visible":"0","isFrame":"1","sysApi":null,"apis":null,"dataScope":"","params":"","RoleId":0,"is_select":false,"appCode":"","seedCode":null,"createBy":0,"updateBy":0,"createdAt":"2026-10-21T08:50:44.815962733Z","updatedAt":"2026-10-21T08:50:44.815962733Z"},{"menuId":10102,"menuName":"Infa10102","title":"Zabbix","icon":"link","path":"/sys-tools/twidc/10102","paths":"/0/537/10100/10102","menuType":"C","action":"","permission":"","parentId":10100,"noCache":false,"breadcrumb":"","component":"/infa/link/index","sort":2,"visible":"0","isFrame":"1","sysApi":null,"apis":null,"dataScope":"","params":"","RoleId":0,"is_select":false,"appCode":"","seedCode":null,"createBy":0,"updateBy":0,"createdAt":"2026-10-21T08:50:44.816478058Z","updatedAt":"2026-10-21T08:50:44.816478058Z"},{"menuId":10103,"menuName":"Infa10103","title":"WAN PRTG","icon":"link","path":"/sys-tools/twidc/10103","paths":"/0/537/10100/10103","menuType":"C","action":"","permission":"","parentId":10100,"noCache":false,"breadcrumb":"","component":"/infa/link/index","sort":3,"visible":"0","isFrame":"1","sysApi":null,"apis":null,"dataScope":"","params":"","RoleId":0,"is_select":false,"appCode":"","seedCode":null,"createBy":0,"updateBy":0,"createdAt":"2026-10-21T08:50:44.816956369Z","updatedAt":"2026-10-21T08:50:44.816956369Z"},{"menuId":10104,"menuName":"Infa10104","title":"LAN PRTG","icon":"link","path":"/sys-tools/twidc/10104","paths":"/0/537/10100/10104","menuType":"C","action":"","permission":"","parentId":10100,"noCache":false,"breadcrumb":"","component":"/infa/link/index","sort":4,"visible":"0","isFrame":"1","sysApi":null,"apis":null,"dataScope":"","params":"","RoleId":0,"is_select":false,"appCode":"","seedCode":null,"createBy":0,"updateBy":0,"createdAt":"2026-10-21T08:50:44.817407874Z","updatedAt":"2026-10-21T08:50:44.817407874Z"},{"menuId":10106,"menuName":"Infa10106","title":"Graylog","icon":"link","path":"/sys-tools/twidc/10106","paths":"/0/537/10100/10106","menuType":"C","action":"","permission":"","parentId":10100,"noCache":false,"breadcrumb":"","component":"/infa/link/index","sort":6,"visible":"0","isFrame":"1","sysApi":null,"apis":null,"dataScope":"","params":"","RoleId":0,"is_select":false,"appCode":"","seedCode":null,"createBy":0,"updateBy":0,"createdAt":"2026-10-21T08:50:44.818149893Z","updatedAt":"2026-10-21T08:50:44.818149893Z"},{"menuId":10200,"menuName":"Infa10200","title":"JPIDC","icon":"server","path":"/sys-tools/jpidc","paths":"/0/537/10200","menuType":"M","action":"","permission":"","parentId":537,"noCache":false,"breadcrumb":"","component":"/infa/region/index","sort":2,"visible":"0","isFrame":"1","sysApi":null,"apis":null,"dataScope":"","params":"","RoleId":0,"is_select":false,"appCode":"","seedCode":null,"createBy":0,"updateBy":0,"createdAt":"2026-10-21T08:50:44.821164787Z","updatedAt":"2026-10-21T08:50:44.821164787Z"},{"menuId":10202,"menuName":"Infa10202","title":"Zabbix","icon":"link","path":"/sys-tools/jpidc/10202","paths":"/0/537/10200/10202","menuType":"C","action":"","permission":"","parentId":10200,"noCache":false,"breadcrumb":"","component":"/infa/link/index","sort":2,"visible":"0","isFrame":"1","sysApi":null,"apis":null,"dataScope":"","params":"","RoleId":0,"is_select":false,"appCode":"","seedCode":null,"createBy":0,"updateBy":0,"createdAt":"2026-10-21T08:50:44.822010608Z","updatedAt":"2026-10-21T08:50:44.822010608Z"}],"createBy":0,"updateBy":0,"createdAt":"2026-10-21T08:50:57.91807613Z","updatedAt":"2026-10-21T08:50:57.91807613Z"}]}},"/api/v1/role/2":{"requestId":"103b8908-daa9-41f1-b212-999e6cf78cf2","code":200,"msg":"查询成功","data":{"roleId":2,"roleName":"TW 維運","status":"2","roleKey":"tw-ops","roleSort":1,"flag":"","remark":"","admin":false,"dataScope":"1","params":"","menuIds":[537,10100,10101,10102,10103,10104,10106,10200,10202],"deptIds":null,"sysDept":null,"sysMenu":null,"createBy":0,"updateBy":0,"createdAt":"2026-10-21T08:50:57.91807613Z","updatedAt":"2026-10-21T08:50:57.91807613Z"}},"/api/v1/role/1":{"requestId":"7370ab0b-d5c5-4342-8d8d-5fb7016c59e3","code":200,"msg":"查询成功","data":{"roleId":1,"roleName":"系统管理员","status":"2","roleKey":"admin","roleSort":1,"flag":"","remark":"","admin":true,"dataScope":"1","params":"","menuIds":[537,10100,10101,10102,10103,10104,10105,10106,10107,10108,10109,10110,10111,10112,10200,10201,10202,10203,10204,10300,10400,10500,10600],"deptIds":null,"sysDept":null,"sysMenu":null,"createBy":1,"updateBy":1,"createdAt":"2021-05-13T19:56:37.913Z","updatedAt":"2021-05-13T19:56:37.913Z"}},"/api/v1/roleDeptTreeselect/2":{"requestId":"d1aed39c-a002-4e4a-bbb7-3f88d4c1ebe8","code":200,"data":{"checkedKeys":[],"depts":[{"id":1,"label":"爱拓科技","children":[{"id":7,"label":"研发部","children":[]},{"id":8,"label":"运维部","children":[]},{"id":9,"label":"客服部","children":[]},{"id":10,"label":"人力资源","children":[]}]}]}},"/api/v1/dict-data/option-select?dictType=sys_show_hide":{"requestId":"540a13fe-81d0-4fdc-b565-3476bc771f9c","code":200,"msg":"查询成功","data":[{"label":"显示","value":"0"},{"label":"隐藏","value":"1"}]},"/api/v1/menu":{"requestId":"492fea4d-91d2-4408-88be-1eb2c8e33886","code":200,"msg":"查询成功","data":[{"menuId":537,"menuName":"SysTools","title":"系統工具","icon":"monitor","path":"/sys-tools","paths":"/0/537","menuType":"M","action":"","permission":"","parentId":0,"noCache":false,"breadcrumb":"","component":"Layout","sort":1,"visible":"0","isFrame":"1","sysApi":[],"apis":null,"dataScope":"","params":"","RoleId":0,"children":[{"menuId":10100,"menuName":"Infa10100","title":"TWIDC","icon":"server","path":"/sys-tools/twidc","paths":"","menuType":"M","action":"","permission":"","parentId":537,"noCache":false,"breadcrumb":"","component":"/infa/region/index","sort":1,"visible":"0","isFrame":"","sysApi":[],"apis":null,"dataScope":"","params":"","RoleId":0,"children":[{"menuId":10101,"menuName":"Infa10101","title":"Cacti","icon":"link","path":"/sys-tools/twidc/10101","paths":"","menuType":"C","action":"","permission":"","parentId":10100,"noCache":false,"breadcrumb":"","component":"/infa/link/index","sort":1,"visible":"0","isFrame":"","sysApi":[],"apis":null,"dataScope":"","params":"","RoleId":0,"is_select":false,"appCode":"","seedCode":null,"createBy":0,"updateBy":0,"createdAt":"2026-10-21T08:50:44.815962733Z","updatedAt":"0001-01-01T00:00:00Z"},{"menuId":10102,"menuName":"Infa10102","title":"Zabbix","icon":"link","path":"/sys-tools/twidc/10102","paths":"","menuType":"C","action":"","permission":"","parentId":10100,"noCache":false,"breadcrumb":"","component":"/infa/link/index","sort":2,"visible":"0","isFrame":"","sysApi":[],"apis":null,"dataScope":"","params":"","RoleId":0,"is_select":false,"appCode":"","seedCode":null,"createBy":0,"updateBy":0,"createdAt":"2026-10-21T08:50:44.816478058Z","updatedAt":"0001-01-01T00:00:00Z"},{"menuId":10103,"menuName":"Infa10103","title":"WAN PRTG","icon":"link","path":"/sys-tools/twidc/10103","paths":"","menuType":"C","action":"","permission":"","parentId":10100,"noCache":false,"breadcrumb":"","component":"/infa/link/index","sort":3,"visible":"0","isFrame":"","sysApi":[],"apis":null,"dataScope":"","params":"","RoleId":0,"is_select":false,"appCode":"","seedCode":null,"createBy":0,"updateBy":0,"createdAt":"2026-10-21T08:50:44.816956369Z","updatedAt":"0001-01-01T00:00:00Z"},{"menuId":10104,"menuName":"Infa10104","title":"LAN PRTG","icon":"link","path":"/sys-tools/twidc/10104","paths":"","menuType":"C","action":"","permission":"","parentId":10100,"noCache":false,"breadcrumb":"","component":"/infa/link/index","sort":4,"visible":"0","isFrame":"","sysApi":[],"apis":null,"dataScope":"","params":"","RoleId":0,"is_select":false,"appCode":"","seedCode":null,"createBy":0,"updateBy":0,"createdAt":"2026-10-21T08:50:44.817407874Z","updatedAt":"0001-01-01T00:00:00Z"},{"menuId":10105,"menuName":"Infa10105","title":"Ext PRTG","icon":"link","path":"/sys-tools/twidc/10105","paths":"","menuType":"C","action":"","permission":"","parentId":10100,"noCache":false,"breadcrumb":"","component":"/infa/link/index","sort":5,"visible":"0","isFrame":"","sysApi":[],"apis":null,"dataScope":"","params":"","RoleId":0,"is_select":false,"appCode":"","seedCode":null,"createBy":0,"updateBy":0,"createdAt":"2026-10-21T08:50:44.817807213Z","updatedAt":"0001-01-01T00:00:00Z"},{"menuId":10106,"menuName":"Infa10106","title":"Graylog","icon":"link","path":"/sys-tools/twidc/10106","paths":"","menuType":"C","action":"","permission":"","parentId":10100,"noCache":false,"breadcrumb":"","component":"/infa/link/index","sort":6,"visible":"0","isFrame":"","sysApi":[],"apis":null,"dataScope":"","params":"","RoleId":0,"is_select":false,"appCode":"","seedCode":null,"createBy":0,"updateBy":0,"createdAt":"2026-10-21T08:50:44.818149893Z","updatedAt":"0001-01-01T00:00:00Z"},{"menuId":10107,"menuName":"Infa10107","title":"Graylog2","icon":"link","path":"/sys-tools/twidc/10107","paths":"","menuType":"C","action":"","permission":"","parentId":10100,"noCache":false,"breadcrumb":"","component":"/infa/link/index","sort":7,"visible":"0","isFrame":"","sysApi":[],"apis":null,"dataScope":"","params":"","RoleId":0,"is_select":false,"appCode":"","seedCode":null,"createBy":0,"updateBy":0,"createdAt":"2026-10-21T08:50:44.818724571Z","updatedAt":"0001-01-01T00:00:00Z"},{"menuId":10108,"menuName":"Infa10108","title":"Looking glass","icon":"link","path":"/sys-tools/twidc/10108","paths":"","menuType":"C","action":"","permission":"","parentId":10100,"noCache":false,"breadcrumb":"","component":"/infa/link/index","sort":8,"visible":"0","isFrame":"","sysApi":[],"apis":null,"dataScope":"","params":"","RoleId":0,"is_select":false,"appCode":"","seedCode":null,"createBy":0,"updateBy":0,"createdAt":"2026-10-21T08:50:44.819155289Z","updatedAt":"0001-01-01T00:00:00Z"},{"menuId":10109,"menuName":"Infa10109","title":"Streaming wall","icon":"link","path":"/sys-tools/twidc/10109","paths":"","menuType":"C","action":"","permission":"","parentId":10100,"noCache":false,"breadcrumb":"","component":"/infa/link/index","sort":9,"visible":"0","isFrame":"","sysApi":[],"apis":null,"dataScope":"","params":"","RoleId":0,"is_select":false,"appCode":"","seedCode":null,"createBy":0,"updateBy":0,"createdAt":"2026-10-21T08:50:44.819566861Z","updatedAt":"0001-01-01T00:00:00Z"},{"menuId":10110,"menuName":"Infa10110","title":"haproxystat","icon":"link","path":"/sys-tools/twidc/10110","paths":"","menuType":"C","action":"","permission":"","parentId":10100,"noCache":false,"breadcrumb":"","component":"/infa/link/index","sort":10,"visible":"0","isFrame":"","sysApi":[],"apis":null,"dataScope":"","params":"","RoleId":0,"is_select":false,"appCode":"","seedCode":null,"createBy":0,"updateBy":0,"createdAt":"2026-10-21T08:50:44.819895282Z","updatedAt":"0001-01-01T00:00:00Z"},{"menuId":10111,"menuName":"Infa10111","title":"NTOP","icon":"link","path":"/sys-tools/twidc/10111","paths":"","menuType":"C","action":"","permission":"","parentId":10100,"noCache":false,"breadcrumb":"","component":"/infa/link/index","sort":11,"visible":"0","isFrame":"","sysApi":[],"apis":null,"dataScope":"","params":"","RoleId":0,"is_select":false,"appCode":"","seedCode":null,"createBy":0,"updateBy":0,"createdAt":"2026-10-21T08:50:44.820322099Z","updatedAt":"0001-01-01T00:00:00Z"},{"menuId":10112,"menuName":"Infa10112","title":"Wazuh","icon":"link","path":"/sys-tools/twidc/10112","paths":"","menuType":"C","action":"","permission":"","parentId":10100,"noCache":false,"breadcrumb":"","component":"/infa/link/index","sort":12,"visible":"0","isFrame":"","sysApi":[],"apis":null,"dataScope":"","params":"","RoleId":0,"is_select":false,"appCode":"","seedCode":null,"createBy":0,"updateBy":0,"createdAt":"2026-10-21T08:50:44.820738916Z","updatedAt":"0001-01-01T00:00:00Z"}],"is_select":false,"appCode":"","seedCode":null,"createBy":0,"updateBy":0,"createdAt":"2026-10-21T08:50:44.815444251Z","updatedAt":"0001-01-01T00:00:00Z"},{"menuId":10200,"menuName":"Infa10200","title":"JPIDC","icon":"server","path":"/sys-tools/jpidc","paths":"","menuType":"M","action":"","permission":"","parentId":537,"noCache":false,"breadcrumb":"","component":"/infa/region/index","sort":2,"visible":"0","isFrame":"","sysApi":[],"apis":null,"dataScope":"","params":"","RoleId":0,"children":[{"menuId":10201,"menuName":"Infa10201","title":"Cacti","icon":"link","path":"/sys-tools/jpidc/10201","paths":"","menuType":"C","action":"","permission":"","parentId":10200,"noCache":false,"breadcrumb":"","component":"/infa/link/index","sort":1,"visible":"0","isFrame":"","sysApi":[],"apis":null,"dataScope":"","params":"","RoleId":0,"is_select":false,"appCode":"","seedCode":null,"createBy":0,"updateBy":0,"createdAt":"2026-10-21T08:50:44.821610038Z","updatedAt":"0001-01-01T00:00:00Z"},{"menuId":10202,"menuName":"Infa10202","title":"Zabbix","icon":"link","path":"/sys-tools/jpidc/10202","paths":"","menuType":"C","action":"","permission":"","parentId":10200,"noCache":false,"breadcrumb":"","component":"/infa/link/index","sort":2,"visible":"0","isFrame":"","sysApi":[],"apis":null,"dataScope":"","params":"","RoleId":0,"is_select":false,"appCode":"","seedCode":null,"createBy":0,"updateBy":0,"createdAt":"2026-10-21T08:50:44.822010608Z","updatedAt":"0001-01-01T00:00:00Z"},{"menuId":10203,"menuName":"Infa10203","title":"PRTG","icon":"link","path":"/sys-tools/jpidc/10203","paths":"","menuType":"C","action":"","permission":"","parentId":10200,"noCache":false,"breadcrumb":"","component":"/infa/link/index","sort":3,"visible":"0","isFrame":"","sysApi":[],"apis":null,"dataScope":"","params":"","RoleId":0,"is_select":false,"appCode":"","seedCode":null,"createBy":0,"updateBy":0,"createdAt":"2026-10-21T08:50:44.822675013Z","updatedAt":"0001-01-01T00:00:00Z"},{"menuId":10204,"menuName":"Infa10204","title":"Graylog","icon":"link","path":"/sys-tools/jpidc/10204","paths":"","menuType":"C","action":"","permission":"","parentId":10200,"noCache":false,"breadcrumb":"","component":"/infa/link/index","sort":4,"visible":"0","isFrame":"","sysApi":[],"apis":null,"dataScope":"","params":"","RoleId":0,"is_select":false,"appCode":"","seedCode":null,"createBy":0,"updateBy":0,"createdAt":"2026-10-21T08:50:44.823153879Z","updatedAt":"0001-01-01T00:00:00Z"}],"is_select":false,"appCode":"","seedCode":null,"createBy":0,"updateBy":0,"createdAt":"2026-10-21T08:50:44.821164787Z","updatedAt":"0001-01-01T00:00:00Z"},{"menuId":10300,"menuName":"Infa10300","title":"PHIDC","icon":"server","path":"/sys-tools/phidc","paths":"","menuType":"M","action":"","permission":"","parentId":537,"noCache":false,"breadcrumb":"","component":"/infa/region/index","sort":3,"visible":"0","isFrame":"","sysApi":[],"apis":null,"dataScope":"","params":"","RoleId":0,"is_select":false,"appCode":"","seedCode":null,"createBy":0,"updateBy":0,"createdAt":"2026-10-21T08:50:44.823634139Z","updatedAt":"0001-01-01T00:00:00Z"},{"menuId":10400,"menuName":"Infa10400","title":"PH Office","icon":"server","path":"/sys-tools/ph-office","paths":"","menuType":"M","action":"","permission":"","parentId":537,"noCache":false,"breadcrumb":"","component":"/infa/region/index","sort":4,"visible":"0","isFrame":"","sysApi":[],"apis":null,"dataScope":"","params":"","RoleId":0,"is_select":false,"appCode":"","seedCode":null,"createBy":0,"updateBy":0,"createdAt":"2026-10-21T08:50:44.824021333Z","updatedAt":"0001-01-01T00:00:00Z"},{"menuId":10500,"menuName":"Infa10500","title":"PH Studio","icon":"server","path":"/sys-tools/ph-studio","paths":"","menuType":"M","action":"","permission":"","parentId":537,"noCache":false,"breadcrumb":"","component":"/infa/region/index","sort":5,"visible":"0","isFrame":"","sysApi":[],"apis":null,"dataScope":"","params":"","RoleId":0,"is_select":false,"appCode":"","seedCode":null,"createBy":0,"updateBy":0,"createdAt":"2026-10-21T08:50:44.82445547Z","updatedAt":"0001-01-01T00:00:00Z"},{"menuId":10600,"menuName":"Infa10600","title":"SL Office","icon":"server","path":"/sys-tools/sl-office","paths":"","menuType":"M","action":"","permission":"","parentId":537,"noCache":false,"breadcrumb":"","component":"/infa/region/index","sort":6,"visible":"0","isFrame":"","sysApi":[],"apis":null,"dataScope":"","params":"","RoleId":0,"is_select":false,"appCode":"","seedCode":null,"createBy":0,"updateBy":0,"createdAt":"2026-10-21T08:50:44.82491037Z","updatedAt":"0001-01-01T00:00:00Z"}],"is_select":false,"appCode":"","seedCode":null,"createBy":1,"updateBy":1,"createdAt":"2021-05-21T11:13:32.166Z","updatedAt":"2026-10-21T08:50:44.814402239Z"},{"menuId":2,"menuName":"Admin","title":"系統設置","icon":"system","path":"/admin","paths":"/0/2","menuType":"M","action":"无","permission":"","parentId":0,"noCache":true,"breadcrumb":"","component":"Layout","sort":2,"visible":"0","isFrame":"1","sysApi":[],"apis":null,"dataScope":"","params":"","RoleId":0,"children":[{"menuId":3,"menuName":"SysUserManage","title":"用戶管理","icon":"user","path":"/admin/sys-user","paths":"","menuType":"C","action":"无","permission":"admin:sysUser:list","parentId":2,"noCache":false,"breadcrumb":"","component":"/admin/sys-user/index","sort":1,"visible":"0","isFrame":"","sysApi":[{"id":141,"handle":"go-admin/app/admin/apis.SysUser.GetPage-fm","title":"管理员列表","path":"/api/v1/sys-user","action":"GET","type":"BUS","appCode":"","createdAt":"2021-06-13T19:24:57.111Z","updatedAt":"2021-06-17T20:31:14.318Z","createBy":0,"updateBy":0}],"apis":null,"dataScope":"","params":"","RoleId":0,"children":[{"menuId":43,"menuName":"","title":"新增管理员","icon":"app-group-fill","path":"","paths":"","menuType":"F","action":"POST","permission":"admin:sysUser:add","parentId":3,"noCache":false,"breadcrumb":"","component":"","sort":10,"visible":"0","isFrame":"","sysApi":[{"id":150,"handle":"go-admin/app/admin/apis.SysUser.Insert-fm","title":"管理员创建","path":"/api/v1/sys-user","action":"POST","type":"BUS","appCode":"","createdAt":"2021-06-13T19:25:00.233Z","updatedAt":"2021-06-17T20:31:14.318Z","createBy":0,"updateBy":0}],"apis":null,"dataScope":"","params":"","RoleId":0,"is_select":false,"appCode":"","seedCode":null,"createBy":0,"updateBy":0,"createdAt":"2021-05-20T22:08:44.526Z","updatedAt":"0001-01-01T00:00:00Z"},{"menuId":46,"menuName":"","title":"删除管理员","icon":"app-group-fill","path":"","paths":"","menuType":"F","action":"DELETE","permission":"admin:sysUser:remove","parentId":3,"noCache":false,"breadcrumb":"","component":"","sort":20,"visible":"0","isFrame":"","sysApi":[{"id":156,"handle":"go-admin/app/admin/apis.SysUser.Delete-fm","title":"管理员删除","path":"/api/v1/sys-user","action":"DELETE","type":"BUS","appCode":"","createdAt":"2021-06-13T19:25:02.043Z","updatedAt":"2021-06-17T20:31:14.318Z","createBy":0,"updateBy":0}],"apis":null,"dataScope":"","params":"","RoleId":0,"is_select":false,"appCode":"","seedCode":null,"createBy":0,"updateBy":0,"createdAt":"2021-05-20T22:08:44.526Z","updatedAt":"0001-01-01T00:00:00Z"},{"menuId":45,"menuName":"","title":"修改管理员","icon":"app-group-fill","path":"","paths":"","menuType":"F","action":"PUT","permission":"admin:sysUser:edit","parentId":3,"noCache":false,"breadcrumb":"","component":"","sort":30,"visible":"0","isFrame":"","sysApi":[{"id":142,"handle":"go-admin/app/admin/apis.SysUser.Get-fm","title":"管理员通过id获取","path":"/api/v1/sys-user/:id","action":"GET","type":"BUS","appCode":"","createdAt":"2021-06-13T19:24:57.188Z","updatedAt":"2021-06-17T20:31:14.318Z","createBy":0,"updateBy":0},{"id":151,"handle":"go-admin/app/admin/apis.SysUser.Update-fm","title":"管理员编辑","path":"/api/v1/sys-user","action":"PUT","type":"BUS","appCode":"","createdAt":"2021-06-13T19:25:00.986Z","updatedAt":"2021-06-17T20:31:14.318Z","createBy":0,"updateBy":0}],"apis":null,"dataScope":"","params":"","RoleId":0,"is_select":false,"appCode":"","seedCode":null,"createBy":0,"updateBy":0,"createdAt":"2021-05-20T22:08:44.526Z","updatedAt":"0001-01-01T00:00:00Z"},{"menuId":44,"menuName":"","title":"查询管理员","icon":"app-group-fill","path":"","paths":"","menuType":"F","action":"GET","permission":"admin:sysUser:query","parentId":3,"noCache":false,"breadcrumb":"","component":"","sort":40,"visible":"0","isFrame":"","sysApi":[{"id":141,"handle":"go-admin/app/admin/apis.SysUser.GetPage-fm","title":"管理员列表","path":"/api/v1/sys-user","action":"GET","type":"BUS","appCode":"","createdAt":"2021-06-13T19:24:57.111Z","updatedAt":"2021-06-17T20:31:14.318Z","createBy":0,"updateBy":0}],"apis":null,"dataScope":"","params":"","RoleId":0,"is_select":false,"appCode":"","seedCode":null,"createBy":0,"updateBy":0,"createdAt":"2021-05-20T22:08:44.526Z","updatedAt":"0001-01-01T00:00:00Z"}],"is_select":false,"appCode":"","seedCode":null,"createBy":0,"updateBy":0,"createdAt":"2021-05-20T22:08:44.526Z","updatedAt":"0001-01-01T00:00:00Z"},{"menuId":52,"menuName":"SysRoleManage","title":"角色管理","icon":"peoples","path":"/admin/sys-role","paths":"","menuType":"C","action":"无","permission":"admin:sysRole:list","parentId":2,"noCache":true,"breadcrumb":"","component":"/admin/sys-role/index","sort":2,"visible":"0","isFrame":"","sysApi":[{"id":44,"handle":"go-admin/app/admin/apis.SysRole.GetPage-fm","title":"角色列表","path":"/api/v1/role","action":"GET","type":"BUS","appCode":"","createdAt":"2021-05-13T19:59:02.72Z","updatedAt":"2021-06-17T11:48:40.732Z","createBy":0,"updateBy":0}],"apis":null,"dataScope":"","params":"","RoleId":0,"children":[{"menuId":224,"menuName":"","title":"新增角色","icon":"app-group-fill","path":"","paths":"","menuType":"F","action":"","permission":"admin:sysRole:add","parentId":52,"noCache":false,"breadcrumb":"","component":"","sort":1,"visible":"0","isFrame":"","sysApi":[{"id":90,"handle":"go-admin/app/admin/apis.SysRole.Insert-fm","title":"角色创建","path":"/api/v1/role","action":"POST","type":"BUS","appCode":"","createdAt":"2021-05-13T19:59:04.975Z","updatedAt":"2021-06-17T11:48:40.732Z","createBy":0,"updateBy":0}],"apis":null,"dataScope":"","params":"","RoleId":0,"is_select":false,"appCode":"","seedCode":null,"createBy":0,"updateBy":0,"createdAt":"2020-04-11T15:52:48Z","updatedAt":"0001-01-01T00:00:00Z"},{"menuId":225,"menuName":"","title":"查询角色","icon":"app-group-fill","path":"","paths":"","menuType":"F","action":"","permission":"admin:sysRole:query","parentId":52,"noCache":false,"breadcrumb":"","component":"","sort":1,"visible":"0","isFrame":"","sysApi":[{"id":44,"handle":"go-admin/app/admin/apis.SysRole.GetPage-fm","title":"角色列表","path":"/api/v1/role","action":"GET","type":"BUS","appCode":"","createdAt":"2021-05-13T19:59:02.72Z","updatedAt":"2021-06-17T11:48:40.732Z","createBy":0,"updateBy":0}],"apis":null,"dataScope":"","params":"","RoleId":0,"is_select":false,"appCode":"","seedCode":null,"createBy":0,"updateBy":0,"createdAt":"2020-04-11T15:52:48Z","updatedAt":"0001-01-01T00:00:00Z"},{"menuId":226,"menuName":"","title":"修改角色","icon":"app-group-fill","path":"","paths":"","menuType":"F","action":"","permission":"admin:sysRole:update","parentId":52,"noCache":false,"breadcrumb":"","component":"","sort":1,"visible":"0","isFrame":"","sysApi":[{"id":29,"handle":"go-admin/app/admin/apis.SysDept.Get2Tree-fm","title":"查询部门下拉树【角色权限-自定权限】","path":"/api/v1/deptTree","action":"GET","type":"SYS","appCode":"","createdAt":"2021-05-13T19:59:02.05Z","updatedAt":"2021-06-17T11:48:40.732Z","createBy":0,"updateBy":0},{"id":45,"handle":"go-admin/app/admin/apis.SysMenu.GetMenuTreeSelect-fm","title":"菜单权限列表【角色配菜单使用】","path":"/api/v1/roleMenuTreeselect/:roleId","action":"GET","type":"SYS","appCode":"","createdAt":"2021-05-13T19:59:02.762Z","updatedAt":"2021-06-17T11:48:40.732Z","createBy":0,"updateBy":0},{"id":46,"handle":"go-admin/app/admin/apis.SysDept.GetDeptTreeRoleSelect-fm","title":"角色部门结构树【自定义数据权限】","path":"/api/v1/roleDeptTreeselect/:roleId","action":"GET","type":"SYS","appCode":"","createdAt":"2021-05-13T19:59:02.809Z","updatedAt":"2021-06-17T11:48:40.732Z","createBy":0,"updateBy":0},{"id":47,"handle":"go-admin/app/admin/apis.SysRole.Get-fm","title":"角色通过id获取","path":"/api/v1/role/:id","action":"GET","type":"BUS","appCode":"","createdAt":"2021-05-13T19:59:02.85Z","updatedAt":"2021-06-17T11:48:40.732Z","createBy":0,"updateBy":0},{"id":106,"handle":"go-admin/app/admin/apis.SysRole.Update-fm","title":"角色编辑","path":"/api/v1/role/:id","action":"PUT","type":"BUS","appCode":"","createdAt":"2021-05-13T19:59:05.752Z","updatedAt":"2021-06-17T11:48:40.732Z","createBy":0,"updateBy":0},{"id":107,"handle":"go-admin/app/admin/apis.SysRole.Update2DataScope-fm","title":"角色数据权限修改","path":"/api/v1/roledatascope","action":"PUT","type":"BUS","appCode":"","createdAt":"2021-05-13T19:59:05.803Z","updatedAt":"2021-06-17T11:48:40.732Z","createBy":0,"updateBy":0},{"id":153,"handle":"go-admin/app/admin/apis.SysRole.Update2Status-fm","title":"","path":"/api/v1/role-status","action":"PUT","type":"","appCode":"","createdAt":"2021-06-13T19:25:01.446Z","updatedAt":"2021-06-13T20:53:51.636Z","createBy":0,"updateBy":0}],"apis":null,"dataScope":"","params":"","RoleId":0,"is_select":false,"appCode":"","seedCode":null,"createBy":0,"updateBy":0,"createdAt":"2020-04-11T15:52:48Z","updatedAt":"0001-01-01T00:00:00Z"},{"menuId":227,"menuName":"","title":"删除角色","icon":"app-group-fill","path":"","paths":"","menuType":"F","action":"","permission":"admin:sysRole:remove","parentId":52,"noCache":false,"breadcrumb":"","component":"","sort":1,"visible":"0","isFrame":"","sysApi":[{"id":128,"handle":"go-admin/app/admin/apis.SysRole.Delete-fm","title":"角色删除","path":"/api/v1/role","action":"DELETE","type":"BUS","appCode":"","createdAt":"2021-05-13T19:59:06.746Z","updatedAt":"2021-06-17T11:48:40.732Z","createBy":0,"updateBy":0}],"apis":null,"dataScope":"","params":"","RoleId":0,"is_select":false,"appCode":"","seedCode":null,"createBy":0,"updateBy":0,"createdAt":"2020-04-11T15:52:48Z","updatedAt":"0001-01-01T00:00:00Z"}],"is_select":false,"appCode":"","seedCode":null,"createBy":0,"updateBy":0,"createdAt":"2021-05-20T22:08:44.526Z","updatedAt":"0001-01-01T00:00:00Z"},{"menuId":51,"menuName":"SysMenuManage","title":"選單管理","icon":"tree-table","path":"/admin/sys-menu","paths":"","menuType":"C","action":"无","permission":"admin:sysMenu:list","parentId":2,"noCache":true,"breadcrumb":"","component":"/admin/sys-menu/index","sort":3,"visible":"0","isFrame":"","sysApi":[{"id":39,"handle":"go-admin/app/admin/apis.SysMenu.GetPage-fm","title":"菜单列表","path":"/api/v1/menu","action":"GET","type":"BUS","appCode":"","createdAt":"2021-05-13T19:59:02.497Z","updatedAt":"2021-06-17T11:48:40.732Z","createBy":0,"updateBy":0},{"id":135,"handle":"go-admin/app/admin/apis.SysApi.GetPage-fm","title":"接口列表","path":"/api/v1/sys-api","action":"GET","type":"BUS","appCode":"","createdAt":"2021-05-24T11:37:53.303Z","updatedAt":"2021-06-17T11:48:40.732Z","createBy":0,"updateBy":0}],"apis":null,"dataScope":"","params":"","RoleId":0,"children":[{"menuId":220,"menuName":"","title":"新增菜单","icon":"app-group-fill","path":"","paths":"","menuType":"F","action":"","permission":"admin:sysMenu:add","parentId":51,"noCache":false,"breadcrumb":"","component":"","sort":1,"visible":"0","isFrame":"","sysApi":[{"id":88,"handle":"go-admin/app/admin/apis.SysMenu.Insert-fm","title":"菜单创建","path":"/api/v1/menu","action":"POST","type":"BUS","appCode":"","createdAt":"2021-05-13T19:59:04.777Z","updatedAt":"2021-06-17T11:48:40.732Z","createBy":0,"updateBy":0}],"apis":null,"dataScope":"","params":"","RoleId":0,"is_select":false,"appCode":"","seedCode":null,"createBy":0,"updateBy":0,"createdAt":"2020-04-11T15:52:48Z","updatedAt":"0001-01-01T00:00:00Z"},{"menuId":221,"menuName":"","title":"修改菜单","icon":"app-group-fill","path":"","paths":"","menuType":"F","action":"","permission":"admin:sysMenu:edit","parentId":51,"noCache":false,"breadcrumb":"","component":"","sort":1,"visible":"0","isFrame":"","sysApi":[{"id":41,"handle":"go-admin/app/admin/apis.SysMenu.Get-fm","title":"菜单通过id获取","path":"/api/v1/menu/:id","action":"GET","type":"BUS","appCode":"","createdAt":"2021-05-13T19:59:02.584Z","updatedAt":"2021-06-17T11:48:40.732Z","createBy":0,"updateBy":0},{"id":109,"handle":"go-admin/app/admin/apis.SysMenu.Update-fm","title":"编辑菜单","path":"/api/v1/menu/:id","action":"PUT","type":"BUS","appCode":"","createdAt":"2021-05-13T19:59:05.891Z","updatedAt":"2021-06-17T11:48:40.732Z","createBy":0,"updateBy":0}],"apis":null,"dataScope":"","params":"","RoleId":0,"is_select":false,"appCode":"","seedCode":null,"createBy":0,"updateBy":0,"createdAt":"2020-04-11T15:52:48Z","updatedAt":"0001-01-01T00:00:00Z"},{"menuId":222,"menuName":"","title":"查询菜单","icon":"app-group-fill","path":"","paths":"","menuType":"F","action":"","permission":"admin:sysMenu:query","parentId":51,"noCache":false,"breadcrumb":"","component":"","sort":1,"visible":"0","isFrame":"","sysApi":[{"id":39,"handle":"go-admin/app/admin/apis.SysMenu.GetPage-fm","title":"菜单列表","path":"/api/v1/menu","action":"GET","type":"BUS","appCode":"","createdAt":"2021-05-13T19:59:02.497Z","updatedAt":"2021-06-17T11:48:40.732Z","createBy":0,"updateBy":0}],"apis":null,"dataScope":"","params":"","RoleId":0,"is_select":false,"appCode":"","seedCode":null,"createBy":0,"updateBy":0,"createdAt":"2020-04-11T15:52:48Z","updatedAt":"0001-01-01T00:00:00Z"},{"menuId":223,"menuName":"","title":"删除菜单","icon":"app-group-fill","path":"","paths":"","menuType":"F","action":"","permission":"admin:sysMenu:remove","parentId":51,"noCache":false,"breadcrumb":"","component":"","sort":1,"visible":"0","isFrame":"","sysApi":[{"id":126,"handle":"go-admin/app/admin/apis.SysMenu.Delete-fm","title":"删除菜单","path":"/api/v1/menu","action":"DELETE","type":"BUS","appCode":"","createdAt":"2021-05-13T19:59:06.654Z","updatedAt":"2021-06-17T11:48:40.732Z","createBy":0,"updateBy":0}],"apis":null,"dataScope":"","params":"","RoleId":0,"is_select":false,"appCode":"","seedCode":null,"createBy":0,"updateBy":0,"createdAt":"2020-04-11T15:52:48Z","updatedAt":"0001-01-01T00:00:00Z"}],"is_select":false,"appCode":"","seedCode":null,"createBy":0,"updateBy":0,"createdAt":"2021-05-20T22:08:44.526Z","updatedAt":"0001-01-01T00:00:00Z"}],"is_select":false,"appCode":"","seedCode":null,"createBy":0,"updateBy":1,"createdAt":"2021-05-20T21:58:45.679Z","updatedAt":"2026-10-21T08:50:44.814785344Z"}]},"/api/v1/sys-api?pageSize=10000&type=BUS":{"requestId":"dd4c2208-2f62-4eac-988c-e4cb2909c145","code":200,"msg":"查询成功","data":{"count":76,"pageIndex":1,"pageSize":10000,"list":[{"id":5,"handle":"go-admin/app/admin/apis.SysLoginLog.Get-fm","title":"登录日志通过id获取","path":"/api/v1/sys-login-log/:id","action":"GET","type":"BUS","appCode":"","createdAt":"2021-05-13T19:59:00.728Z","updatedAt":"2021-06-17T11:37:12.331Z","createBy":0,"updateBy":0},{"id":6,"handle":"go-admin/app/admin/apis.SysOperaLog.GetPage-fm","title":"操作日志列表","path":"/api/v1/sys-opera-log","action":"GET","type":"BUS","appCode":"","createdAt":"2021-05-13T19:59:00.778Z","updatedAt":"2021-06-17T11:48:40.732Z","createBy":0,"updateBy":0},{"id":7,"handle":"go-admin/app/admin/apis.SysOperaLog.Get-fm","title":"操作日志通过id获取","path":"/api/v1/sys-opera-log/:id","action":"GET","type":"BUS","appCode":"","createdAt":"2021-05-13T19:59:00.821Z","updatedAt":"2021-06-16T21:49:48.598Z","createBy":0,"updateBy":0},{"id":8,"handle":"go-admin/common/actions.IndexAction.func1","title":"分类列表","path":"/api/v1/syscategory","action":"GET","type":"BUS","appCode":"","createdAt":"2021-05-13T19:59:00.87Z","updatedAt":"2021-06-13T20:53:47.883Z","createBy":0,"updateBy":0},{"id":9,"handle":"go-admin/common/actions.ViewAction.func1","title":"分类通过id获取","path":"/api/v1/syscategory/:id","action":"GET","type":"BUS","appCode":"","createdAt":"2021-05-13T19:59:00.945Z","updatedAt":"2021-06-13T20:53:47.926Z","createBy":0,"updateBy":0},{"id":10,"handle":"go-admin/common/actions.IndexAction.func1","title":"内容列表","path":"/api/v1/syscontent","action":"GET","type":"BUS","appCode":"","createdAt":"2021-05-13T19:59:01.005Z","updatedAt":"2021-06-13T20:53:47.966Z","createBy":0,"updateBy":0},{"id":11,"handle":"go-admin/common/actions.ViewAction.func1","title":"内容通过id获取","path":"/api/v1/syscontent/:id","action":"GET","type":"BUS","appCode":"","createdAt":"2021-05-13T19:59:01.056Z","updatedAt":"2021-06-13T20:53:48.005Z","createBy":0,"updateBy":0},{"id":15,"handle":"go-admin/common/actions.IndexAction.func1","title":"job列表","path":"/api/v1/sysjob","action":"GET","type":"BUS","appCode":"","createdAt":"2021-05-13T19:59:01.248Z","updatedAt":"2021-06-13T20:53:48.169Z","createBy":0,"updateBy":0},{"id":16,"handle":"go-admin/common/actions.ViewAction.func1","title":"job通过id获取","path":"/api/v1/sysjob/:id","action":"GET","type":"BUS","appCode":"","createdAt":"2021-05-13T19:59:01.298Z","updatedAt":"2021-06-13T20:53:48.214Z","createBy":0,"updateBy":0},{"id":21,"handle":"go-admin/app/admin/apis.SysDictType.GetPage-fm","title":"字典类型列表","path":"/api/v1/dict/type","action":"GET","type":"BUS","appCode":"","createdAt":"2021-05-13T19:59:01.525Z","updatedAt":"2021-06-17T11:48:40.732Z","createBy":0,"updateBy":0},{"id":23,"handle":"go-admin/app/admin/apis.SysDictType.Get-fm","title":"字典类型通过id获取","path":"/api/v1/dict/type/:id","action":"GET","type":"BUS","appCode":"","createdAt":"2021-05-13T19:59:01.632Z","updatedAt":"2021-06-17T11:48:40.732Z","createBy":0,"updateBy":0},{"id":24,"handle":"go-admin/app/admin/apis.SysDictData.GetPage-fm","title":"字典数据列表","path":"/api/v1/dict/data","action":"GET","type":"BUS","appCode":"","createdAt":"2021-05-13T19:59:01.684Z","updatedAt":"2021-06-17T11:48:40.732Z","createBy":0,"updateBy":0},{"id":25,"handle":"go-admin/app/admin/apis.SysDictData.Get-fm","title":"字典数据通过code获取","path":"/api/v1/dict/data/:dictCode","action":"GET","type":"BUS","appCode":"","createdAt":"2021-05-13T19:59:01.732Z","updatedAt":"2021-06-17T11:48:40.732Z","createBy":0,"updateBy":0},{"id":27,"handle":"go-admin/app/admin/apis.SysDept.GetPage-fm","title":"部门列表","path":"/api/v1/dept","action":"GET","type":"BUS","appCode":"","createdAt":"2021-05-13T19:59:01.94Z","updatedAt":"2021-06-17T11:48:40.732Z","createBy":0,"updateBy":0},{"id":28,"handle":"go-admin/app/admin/apis.SysDept.Get-fm","title":"部门通过id获取","path":"/api/v1/dept/:id","action":"GET","type":"BUS","appCode":"","createdAt":"2021-05-13T19:59:02.009Z","updatedAt":"2021-06-17T11:48:40.732Z","createBy":0,"updateBy":0},{"id":39,"handle":"go-admin/app/admin/apis.SysMenu.GetPage-fm","title":"菜单列表","path":"/api/v1/menu","action":"GET","type":"BUS","appCode":"","createdAt":"2021-05-13T19:59:02.497Z","updatedAt":"2021-06-17T11:48:40.732Z","createBy":0,"updateBy":0},{"id":41,"handle":"go-admin/app/admin/apis.SysMenu.Get-fm","title":"菜单通过id获取","path":"/api/v1/menu/:id","action":"GET","type":"BUS","appCode":"","createdAt":"2021-05-13T19:59:02.584Z","updatedAt":"2021-06-17T11:48:40.732Z","createBy":0,"updateBy":0},{"id":44,"handle":"go-admin/app/admin/apis.SysRole.GetPage-fm","title":"角色列表","path":"/api/v1/role","action":"GET","type":"BUS","appCode":"","createdAt":"2021-05-13T19:59:02.72Z","updatedAt":"2021-06-17T11:48:40.732Z","createBy":0,"updateBy":0},{"id":47,"handle":"go-admin/app/admin/apis.SysRole.Get-fm","title":"角色通过id获取","path":"/api/v1/role/:id","action":"GET","type":"BUS","appCode":"","createdAt":"2021-05-13T19:59:02.85Z","updatedAt":"2021-06-17T11:48:40.732Z","createBy":0,"updateBy":0},{"id":53,"handle":"go-admin/app/admin/apis.SysConfig.GetPage-fm","title":"参数列表","path":"/api/v1/config","action":"GET","type":"BUS","appCode":"","createdAt":"2021-05-13T19:59:03.116Z","updatedAt":"2021-06-17T11:48:40.732Z","createBy":0,"updateBy":0},{"id":54,"handle":"go-admin/app/admin/apis.SysConfig.Get-fm","title":"参数通过id获取","path":"/api/v1/config/:id","action":"GET","type":"BUS","appCode":"","createdAt":"2021-05-13T19:59:03.157Z","updatedAt":"2021-06-17T11:48:40.732Z","createBy":0,"updateBy":0},{"id":57,"handle":"go-admin/app/jobs/apis.SysJob.RemoveJobForService-fm","title":"job移除","path":"/api/v1/job/remove/:id","action":"GET","type":"BUS","appCode":"","createdAt":"2021-05-13T19:59:03.295Z","updatedAt":"2021-06-13T20:53:49.786Z","createBy":0,"updateBy":0},{"id":58,"handle":"go-admin/app/jobs/apis.SysJob.StartJobForService-fm","title":"job启动","path":"/api/v1/job/start/:id","action":"GET","type":"BUS","appCode":"","createdAt":"2021-05-13T19:59:03.339Z","updatedAt":"2021-06-13T20:53:49.829Z","createBy":0,"updateBy":0},{"id":59,"handle":"go-admin/app/admin/apis.SysPost.GetPage-fm","title":"岗位列表","path":"/api/v1/post","action":"GET","type":"BUS","appCode":"","createdAt":"2021-05-13T19:59:03.381Z","updatedAt":"2021-06-17T11:48:40.732Z","createBy":0,"updateBy":0},{"id":60,"handle":"go-admin/app/admin/apis.SysPost.Get-fm","title":"岗位通过id获取","path":"/api/v1/post/:id","action":"GET","type":"BUS","appCode":"","createdAt":"2021-05-13T19:59:03.433Z","updatedAt":"2021-06-17T11:48:40.732Z","createBy":0,"updateBy":0},{"id":66,"handle":"github.com/go-admin-team/go-admin-core/sdk/pkg/ws.(*Manager).WsClient-fm","title":"链接ws【定时任务log】","path":"/ws/:id/:channel","action":"GET","type":"BUS","appCode":"","createdAt":"2021-05-13T19:59:03.705Z","updatedAt":"2021-06-13T20:53:50.167Z","createBy":0,"updateBy":0},{"id":67,"handle":"github.com/go-admin-team/go-admin-core/sdk/pkg/ws.(*Manager).UnWsClient-fm","title":"退出ws【定时任务log】","path":"/wslogout/:id/:channel","action":"GET","type":"BUS","appCode":"","createdAt":"2021-05-13T19:59:03.756Z","updatedAt":"2021-06-13T20:53:50.209Z","createBy":0,"updateBy":0},{"id":72,"handle":"go-admin/common/actions.CreateAction.func1","title":"分类创建","path":"/api/v1/syscategory","action":"POST","type":"BUS","appCode":"","createdAt":"2021-05-13T19:59:03.982Z","updatedAt":"2021-06-13T20:53:50.336Z","createBy":0,"updateBy":0},{"id":73,"handle":"go-admin/common/actions.CreateAction.func1","title":"内容创建","path":"/api/v1/syscontent","action":"POST","type":"BUS","appCode":"","createdAt":"2021-05-13T19:59:04.027Z","updatedAt":"2021-06-13T20:53:50.375Z","createBy":0,"updateBy":0},{"id":76,"handle":"go-admin/common/actions.CreateAction.func1","title":"job创建","path":"/api/v1/sysjob","action":"POST","type":"BUS","appCode":"","createdAt":"2021-05-13T19:59:04.164Z","updatedAt":"2021-06-13T20:53:50.5Z","createBy":0,"updateBy":0},{"id":80,"handle":"go-admin/app/admin/apis.SysDictData.Insert-fm","title":"字典数据创建","path":"/api/v1/dict/data","action":"POST","type":"BUS","appCode":"","createdAt":"2021-05-13T19:59:04.347Z","updatedAt":"2021-06-17T11:48:40.732Z","createBy":0,"updateBy":0},{"id":81,"handle":"go-admin/app/admin/apis.SysDictType.Insert-fm","title":"字典类型创建","path":"/api/v1/dict/type","action":"POST","type":"BUS","appCode":"","createdAt":"2021-05-13T19:59:04.391Z","updatedAt":"2021-06-17T11:48:40.732Z","createBy":0,"updateBy":0},{"id":82,"handle":"go-admin/app/admin/apis.SysDept.Insert-fm","title":"部门创建","path":"/api/v1/dept","action":"POST","type":"BUS","appCode":"","createdAt":"2021-05-13T19:59:04.435Z","updatedAt":"2021-06-17T11:48:40.732Z","createBy":0,"updateBy":0},{"id":87,"handle":"go-admin/app/admin/apis.SysConfig.Insert-fm","title":"参数创建","path":"/api/v1/config","action":"POST","type":"BUS","appCode":"","createdAt":"2021-05-13T19:59:04.685Z","updatedAt":"2021-06-17T11:48:40.732Z","createBy":0,"updateBy":0},{"id":88,"handle":"go-admin/app/admin/apis.SysMenu.Insert-fm","title":"菜单创建","path":"/api/v1/menu","action":"POST","type":"BUS","appCode":"","createdAt":"2021-05-13T19:59:04.777Z","updatedAt":"2021-06-17T11:48:40.732Z","createBy":0,"updateBy":0},{"id":89,"handle":"go-admin/app/admin/apis.SysPost.Insert-fm","title":"岗位创建","path":"/api/v1/post","action":"POST","type":"BUS","appCode":"","createdAt":"2021-05-13T19:59:04.886Z","updatedAt":"2021-06-17T11:48:40.732Z","createBy":0,"updateBy":0},{"id":90,"handle":"go-admin/app/admin/apis.SysRole.Insert-fm","title":"角色创建","path":"/api/v1/role","action":"POST","type":"BUS","appCode":"","createdAt":"2021-05-13T19:59:04.975Z","updatedAt":"2021-06-17T11:48:40.732Z","createBy":0,"updateBy":0},{"id":92,"handle":"go-admin/app/admin/apis.SysApi.Update-fm","title":"接口编辑","path":"/api/v1/sys-api/:id","action":"PUT","type":"BUS","appCode":"","createdAt":"2021-05-13T19:59:05.122Z","updatedAt":"2021-06-17T11:48:40.732Z","createBy":0,"updateBy":0},{"id":95,"handle":"go-admin/common/actions.UpdateAction.func1","title":"分类编辑","path":"/api/v1/syscategory/:id","action":"PUT","type":"BUS","appCode":"","createdAt":"2021-05-13T19:59:05.255Z","updatedAt":"2021-06-13T20:53:51.247Z","createBy":0,"updateBy":0},{"id":96,"handle":"go-admin/common/actions.UpdateAction.func1","title":"内容编辑","path":"/api/v1/syscontent/:id","action":"PUT","type":"BUS","appCode":"","createdAt":"2021-05-13T19:59:05.299Z","updatedAt":"2021-06-13T20:53:51.289Z","createBy":0,"updateBy":0},{"id":97,"handle":"go-admin/common/actions.UpdateAction.func1","title":"job编辑","path":"/api/v1/sysjob","action":"PUT","type":"BUS","appCode":"","createdAt":"2021-05-13T19:59:05.343Z","updatedAt":"2021-06-13T20:53:51.331Z","createBy":0,"updateBy":0},{"id":101,"handle":"go-admin/app/admin/apis.SysDictData.Update-fm","title":"字典数据编辑","path":"/api/v1/dict/data/:dictCode","action":"PUT","type":"BUS","appCode":"","createdAt":"2021-05-13T19:59:05.519Z","updatedAt":"2021-06-17T11:48:40.732Z","createBy":0,"updateBy":0},{"id":102,"handle":"go-admin/app/admin/apis.SysDictType.Update-fm","title":"字典类型编辑","path":"/api/v1/dict/type/:id","action":"PUT","type":"BUS","appCode":"","createdAt":"2021-05-13T19:59:05.569Z","updatedAt":"2021-06-17T11:48:40.732Z","createBy":0,"updateBy":0},{"id":103,"handle":"go-admin/app/admin/apis.SysDept.Update-fm","title":"部门编辑","path":"/api/v1/dept/:id","action":"PUT","type":"BUS","appCode":"","createdAt":"2021-05-13T19:59:05.613Z","updatedAt":"2021-06-17T11:48:40.732Z","createBy":0,"updateBy":0},{"id":104,"handle":"go-admin/app/other/apis.SysFileDir.Update-fm","title":"文件夹编辑","path":"/api/v1/file-dir/:id","action":"PUT","type":"BUS","appCode":"","createdAt":"2021-05-13T19:59:05.662Z","updatedAt":"2021-06-13T20:53:51.847Z","createBy":0,"updateBy":0},{"id":105,"handle":"go-admin/app/other/apis.SysFileInfo.Update-fm","title":"文件编辑","path":"/api/v1/file-info/:id","action":"PUT","type":"BUS","appCode":"","createdAt":"2021-05-13T19:59:05.709Z","updatedAt":"2021-06-13T20:53:51.892Z","createBy":0,"updateBy":0},{"id":106,"handle":"go-admin/app/admin/apis.SysRole.Update-fm","title":"角色编辑","path":"/api/v1/role/:id","action":"PUT","type":"BUS","appCode":"","createdAt":"2021-05-13T19:59:05.752Z","updatedAt":"2021-06-17T11:48:40.732Z","createBy":0,"updateBy":0},{"id":107,"handle":"go-admin/app/admin/apis.SysRole.Update2DataScope-fm","title":"角色数据权限修改","path":"/api/v1/roledatascope","action":"PUT","type":"BUS","appCode":"","createdAt":"2021-05-13T19:59:05.803Z","updatedAt":"2021-06-17T11:48:40.732Z","createBy":0,"updateBy":0},{"id":108,"handle":"go-admin/app/admin/apis.SysConfig.Update-fm","title":"参数编辑","path":"/api/v1/config/:id","action":"PUT","type":"BUS","appCode":"","createdAt":"2021-05-13T19:59:05.848Z","updatedAt":"2021-06-17T11:48:40.732Z","createBy":0,"updateBy":0},{"id":109,"handle":"go-admin/app/admin/apis.SysMenu.Update-fm","title":"编辑菜单","path":"/api/v1/menu/:id","action":"PUT","type":"BUS","appCode":"","createdAt":"2021-05-13T19:59:05.891Z","updatedAt":"2021-06-17T11:48:40.732Z","createBy":0,"updateBy":0},{"id":110,"handle":"go-admin/app/admin/apis.SysPost.Update-fm","title":"岗位编辑","path":"/api/v1/post/:id","action":"PUT","type":"BUS","appCode":"","createdAt":"2021-05-13T19:59:05.934Z","updatedAt":"2021-06-17T11:48:40.732Z","createBy":0,"updateBy":0},{"id":112,"handle":"go-admin/common/actions.DeleteAction.func1","title":"分类删除","path":"/api/v1/syscategory","action":"DELETE","type":"BUS","appCode":"","createdAt":"2021-05-13T19:59:06.03Z","updatedAt":"2021-06-13T20:53:52.237Z","createBy":0,"updateBy":0},{"id":113,"handle":"go-admin/common/actions.DeleteAction.func1","title":"内容删除","path":"/api/v1/syscontent","action":"DELETE","type":"BUS","appCode":"","createdAt":"2021-05-13T19:59:06.076Z","updatedAt":"2021-06-13T20:53:52.278Z","createBy":0,"updateBy":0},{"id":114,"handle":"go-admin/app/admin/apis.SysLoginLog.Delete-fm","title":"登录日志删除","path":"/api/v1/sys-login-log","action":"DELETE","type":"BUS","appCode":"","createdAt":"2021-05-13T19:59:06.118Z","updatedAt":"2021-06-17T11:48:40.732Z","createBy":0,"updateBy":0},{"id":115,"handle":"go-admin/app/admin/apis.SysOperaLog.Delete-fm","title":"操作日志删除","path":"/api/v1/sys-opera-log","action":"DELETE","type":"BUS","appCode":"","createdAt":"2021-05-13T19:59:06.162Z","updatedAt":"2021-06-17T11:48:40.732Z","createBy":0,"updateBy":0},{"id":116,"handle":"go-admin/common/actions.DeleteAction.func1","title":"job删除","path":"/api/v1/sysjob","action":"DELETE","type":"BUS","appCode":"","createdAt":"2021-05-13T19:59:06.206Z","updatedAt":"2021-06-13T20:53:52.323Z","createBy":0,"updateBy":0},{"id":117,"handle":"go-admin/app/other/apis.SysChinaAreaData.Delete-fm","title":"行政区删除","path":"/api/v1/sys-area-data","action":"DELETE","type":"BUS","appCode":"","createdAt":"2021-05-13T19:59:06.249Z","updatedAt":"2021-06-13T20:53:52.061Z","createBy":0,"updateBy":0},{"id":120,"handle":"go-admin/app/admin/apis.SysDictData.Delete-fm","title":"字典数据删除","path":"/api/v1/dict/data","action":"DELETE","type":"BUS","appCode":"","createdAt":"2021-05-13T19:59:06.387Z","updatedAt":"2021-06-17T11:48:40.732Z","createBy":0,"updateBy":0},{"id":121,"handle":"go-admin/app/admin/apis.SysDictType.Delete-fm","title":"字典类型删除","path":"/api/v1/dict/type","action":"DELETE","type":"BUS","appCode":"","createdAt":"2021-05-13T19:59:06.432Z","updatedAt":"2021-06-17T11:48:40.732Z","createBy":0,"updateBy":0},{"id":122,"handle":"go-admin/app/admin/apis.SysDept.Delete-fm","title":"部门删除","path":"/api/v1/dept/:id","action":"DELETE","type":"BUS","appCode":"","createdAt":"2021-05-13T19:59:06.475Z","updatedAt":"2021-06-17T11:48:40.732Z","createBy":0,"updateBy":0},{"id":123,"handle":"go-admin/app/other/apis.SysFileDir.Delete-fm","title":"文件夹删除","path":"/api/v1/file-dir/:id","action":"DELETE","type":"BUS","appCode":"","createdAt":"2021-05-13T19:59:06.52Z","updatedAt":"2021-06-13T20:53:52.539Z","createBy":0,"updateBy":0},{"id":124,"handle":"go-admin/app/other/apis.SysFileInfo.Delete-fm","title":"文件删除","path":"/api/v1/file-info/:id","action":"DELETE","type":"BUS","appCode":"","createdAt":"2021-05-13T19:59:06.566Z","updatedAt":"2021-06-13T20:53:52.58Z","createBy":0,"updateBy":0},{"id":125,"handle":"go-admin/app/admin/apis.SysConfig.Delete-fm","title":"参数删除","path":"/api/v1/config","action":"DELETE","type":"BUS","appCode":"","createdAt":"2021-05-13T19:59:06.612Z","updatedAt":"2021-06-17T11:48:40.732Z","createBy":0,"updateBy":0},{"id":126,"handle":"go-admin/app/admin/apis.SysMenu.Delete-fm","title":"删除菜单","path":"/api/v1/menu","action":"DELETE","type":"BUS","appCode":"","createdAt":"2021-05-13T19:59:06.654Z","updatedAt":"2021-06-17T11:48:40.732Z","createBy":0,"updateBy":0},{"id":127,"handle":"go-admin/app/admin/apis.SysPost.Delete-fm","title":"岗位删除","path":"/api/v1/post/:id","action":"DELETE","type":"BUS","appCode":"","createdAt":"2021-05-13T19:59:06.702Z","updatedAt":"2021-06-17T11:48:40.732Z","createBy":0,"updateBy":0},{"id":128,"handle":"go-admin/app/admin/apis.SysRole.Delete-fm","title":"角色删除","path":"/api/v1/role","action":"DELETE","type":"BUS","appCode":"","createdAt":"2021-05-13T19:59:06.746Z","updatedAt":"2021-06-17T11:48:40.732Z","createBy":0,"updateBy":0},{"id":135,"handle":"go-admin/app/admin/apis.SysApi.GetPage-fm","title":"接口列表","path":"/api/v1/sys-api","action":"GET","type":"BUS","appCode":"","createdAt":"2021-05-24T11:37:53.303Z","updatedAt":"2021-06-17T11:48:40.732Z","createBy":0,"updateBy":0},{"id":136,"handle":"go-admin/app/admin/apis.SysApi.Get-fm","title":"接口通过id获取","path":"/api/v1/sys-api/:id","action":"GET","type":"BUS","appCode":"","createdAt":"2021-05-24T11:37:53.359Z","updatedAt":"2021-06-17T11:48:40.732Z","createBy":0,"updateBy":0},{"id":137,"handle":"go-admin/app/admin/apis.SysLoginLog.GetPage-fm","title":"登录日志列表","path":"/api/v1/sys-login-log","action":"GET","type":"BUS","appCode":"","createdAt":"2021-05-24T11:47:30.397Z","updatedAt":"2021-06-17T11:48:40.732Z","createBy":0,"updateBy":0},{"id":139,"handle":"go-admin/app/admin/apis.SysConfig.Update2Set-fm","title":"参数信息修改【参数配置】","path":"/api/v1/set-config","action":"PUT","type":"BUS","appCode":"","createdAt":"2021-05-27T09:45:14.853Z","updatedAt":"2021-06-17T11:48:40.732Z","createBy":0,"updateBy":0},{"id":140,"handle":"go-admin/app/admin/apis.SysConfig.Get2Set-fm","title":"参数获取全部【配置使用】","path":"/api/v1/set-config","action":"GET","type":"BUS","appCode":"","createdAt":"2021-05-27T11:54:14.384Z","updatedAt":"2021-06-17T11:48:40.732Z","createBy":0,"updateBy":0},{"id":141,"handle":"go-admin/app/admin/apis.SysUser.GetPage-fm","title":"管理员列表","path":"/api/v1/sys-user","action":"GET","type":"BUS","appCode":"","createdAt":"2021-06-13T19:24:57.111Z","updatedAt":"2021-06-17T20:31:14.318Z","createBy":0,"updateBy":0},{"id":142,"handle":"go-admin/app/admin/apis.SysUser.Get-fm","title":"管理员通过id获取","path":"/api/v1/sys-user/:id","action":"GET","type":"BUS","appCode":"","createdAt":"2021-06-13T19:24:57.188Z","updatedAt":"2021-06-17T20:31:14.318Z","createBy":0,"updateBy":0},{"id":150,"handle":"go-admin/app/admin/apis.SysUser.Insert-fm","title":"管理员创建","path":"/api/v1/sys-user","action":"POST","type":"BUS","appCode":"","createdAt":"2021-06-13T19:25:00.233Z","updatedAt":"2021-06-17T20:31:14.318Z","createBy":0,"updateBy":0},{"id":151,"handle":"go-admin/app/admin/apis.SysUser.Update-fm","title":"管理员编辑","path":"/api/v1/sys-user","action":"PUT","type":"BUS","appCode":"","createdAt":"2021-06-13T19:25:00.986Z","updatedAt":"2021-06-17T20:31:14.318Z","createBy":0,"updateBy":0},{"id":156,"handle":"go-admin/app/admin/apis.SysUser.Delete-fm","title":"管理员删除","path":"/api/v1/sys-user","action":"DELETE","type":"BUS","appCode":"","createdAt":"2021-06-13T19:25:02.043Z","updatedAt":"2021-06-17T20:31:14.318Z","createBy":0,"updateBy":0}]}},"/api/v1/menu/537":{"requestId":"ac941404-da65-4503-ad78-57c4fd0bac4d","code":200,"msg":"查询成功","data":{"menuId":537,"menuName":"SysTools","title":"系統工具","icon":"monitor","path":"/sys-tools","paths":"/0/537","menuType":"M","action":"","permission":"","parentId":0,"noCache":false,"breadcrumb":"","component":"Layout","sort":1,"visible":"0","isFrame":"1","sysApi":[],"apis":[],"dataScope":"","params":"","RoleId":0,"is_select":false,"appCode":"","seedCode":null,"createBy":1,"updateBy":1,"createdAt":"2021-05-21T11:13:32.166Z","updatedAt":"2026-10-21T08:50:44.814402239Z"}}},"demo":{"/api/v1/captcha":{"code":200,"data":"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAPAAAABQCAMAAAAQlwhOAAAA81BMVEUAAAAmO1YsQVxtgp0CFzJ5jqlccYyftM8SJ0ISJ0Jug54dMk2Sp8J5jqmgtdANIj1sgZxKX3pRZoEtQl1GW3Y3TGdIXXhEWXSBlrEJHjkUKURrgJtkeZRHXHeOo75whaBAVXCRpsE0SWQ5TmlMYXwhNlE6T2oKHzoNIj0bMEsCFzJPZH+lutVCV3InPFeVqsWbsMulutWInbgSJ0IOIz4sQVxbcIuDmLMjOFNec46ovdiftM8rQFtLYHswRWAWK0aMobyJnrlccYx+k66mu9aUqcRQZYCGm7YqP1oIHTgwRWBccYyLoLsRJkGMobxEWXSgtdDNEnmQAAAAAXRSTlMAQObYZgAABaZJREFUeJzkW1lLMzEUzf2qD/qgCEqrRQQRRF/EHUVQH4qC+P//zkfqPdkny0xmOtZzhd7sOTlZpmMqoniA80fw8DAU47ugO7wNxvdO0TTcdcZd0C3FFM5IcQunEqbTKowP4NTG7W11xjV0PjjojzEcDztwVqFzb3ybbWenE2M4vwhFfB/h/BE8Pq4f4304f0Th/f39nGxpO4PTCl9wVqLwEZwCnJ11Yfz1NSBjz46OWjGGM1KFYy204Tt2rHYOCSEITjW8wClXuGeQIAlBP6yvEN8NLy8vWfmGB8jKTyJxdVWLcZ/Tp5rCRHRVtXKuHaGyRTWB06fC1MtgphHINZn0whgcFetnpHSDOYo5GExhwxay2efnZ28wyqHI5vJdBRaLhezhM7mzHeEWZLMFLrFDOF2xQGe9rodpn/7Q/mwkm72CM4wbE+Lt8LAaY9ljEr7CYdKnp6eS4OenZgymuqBTprXJxpbO29tbTb6SAbqod2/F2s55uoyjAF+maReopTCcKrBYKbIWCyEuVSIPBZ75dZQzdkW2FXuHRbJl/pMf9oFGnRQ2NLUUvry85BgMBfG3Oum/+qWDOIHjYmtry31LuWwBIyxdEGe2uh2rzfT/Vpx5a3dZKSkVVkxBXDKWEa+vr6Gx8+zkpJkxHKkwxpMoV2FK//cMs9XbVhu7DKI8KqQ80V1hA6ihTGGipMJKKoevGTABeTV58rM7wTKTHVKVmgonwaohGEJwY0K8gRs4Wl7F3uVHy8mIUBF0RS1r4Ok2aS4MqtTYtLSbG2Zsygv6+oOzTKdTI0u2ccVuE2VYlp1MIozDCjuEheJrceOSCKk4+0DZhBODnsSIaQ+iSWRun2GW2jkiwnM2HiY23ly0UJxfiM3NOGNVpVWwq/FkQTDwTtddtabwnABiqouI4wasVN5GicRmc3+sepBWB6HdxX6na7SO/GpHUyWNPKAWVhi7t6KNU4Wnkq7IpB1CfH5EoTcFxJhQR4wKggxKqJ4aXYQbUVgI+/gMKmybcYqmVkQcaCDYEHpK20pTUIDOgYJ2p9WYKSepcOqWUZrvZSNf1UN8QgPtE21sb2+r9c4Jqnd+P6217ycLEVQ4YQ9eTATL5/u8FY0QOiX7u7Gxsa1F0bn1ANgXCHQ2M3VQpPlKmxFZwkJpsaEHAVAaazlxRcTiaAVGZrPZDK4mZ6jqGA6nqMJ6OFaKLT9K/s0cFbnL4R7rqeAWMkRN7ERDmfmd2obfuRKFhauwsdJHqXCAMb6WhZBW2B+LIMre9Xe4rxgwp/ugFN3YGxUmPylk5rv+NMpupE6T//9k2diPKqyXsQwI8SocXfP4VlB4DsfFdDpN/f+Tn5XxGVVY4GlxKaN+fcVPLpp5z5jP5+0VxgFsACkekB5U2EzpG/NEegJEjsRISEgs7LMoUXRUpiRW+w/ioxKbkd4wDGQzNyKy9E2zvvjCPA5halwqtvgLQa2eFlts7u4idKhR+GnLWMOI6oaSmny+91kKh82evzwLON6Orjulu1R0f39vhdN4dxjbOxpZj5k6S02+3XBfuL2/v5uMNVVmZo0DE2d5R0K4+AB/D05rW0VNUwMFwtiFs1LMm5O0MTEmiUgzLkPe3d2hGXe5A6TVDMWFTqrVK9z9lpclsDnX1aM4ErLxD87YFG4ABbwS/PtXk/EenBGjJd8FHBN7e7+BcSssFmHGcJb2AacQx3Dq/faqOxaRNMbHRzvGx8eK8ROc/F/X5Y1WP/vMR8v7XJrvU4wxnKbRyvslQKX7wte4sYeIdnhK5mgerdzfeuTwvUo9Ol9fLxlfdOTbk30F4qLwXtH5X45++F5cIPzLkVSY7aLlO9JaOOyhzjyUvQWvhbp3nMvQje9xbsbRKNzNco6a9cJv4fsNZ/0QPG+/v9eN8TmchieqteN7rhnDWW+cO2EhhBD/BwC4PECjGcCCQQAAAABJRU5ErkJggg==","id":"KTTXcryyF0jYBjhEx96E","msg":"success","requestId":"5b13e286-e9a2-4f81-ba1d-2b33fb43fdf5"},"/api/v1/app-config":{"requestId":"df959c0c-7da7-48ba-9854-734e088919c3","code":200,"msg":"查询成功","data":{"sys_app_logo":"https://doc-image.zhangwj.com/img/go-admin.png","sys_app_name":"INFA 監控後台"}},"/api/v1/getinfo":{"requestId":"655b3f92-f5b9-49e1-8958-e7a643554435","code":200,"data":{"avatar":"https://wpimg.wallstcn.com/f778738c-e4f8-4870-b634-56703b4acafe.gif","buttons":[],"code":200,"deptId":1,"introduction":" am a super administrator","name":"值班 Demo","permissions":[],"roles":["tw-ops"],"userId":2,"userName":"demo"}},"/api/v1/menurole":{"requestId":"9096c006-694d-4268-94a0-3832ecdcf68b","code":200,"data":[{"menuId":537,"menuName":"SysTools","title":"系統工具","icon":"monitor","path":"/sys-tools","paths":"/0/537","menuType":"M","action":"","permission":"","parentId":0,"noCache":false,"breadcrumb":"","component":"Layout","sort":1,"visible":"0","isFrame":"1","sysApi":null,"apis":null,"dataScope":"","params":"","RoleId":0,"children":[{"menuId":10100,"menuName":"Infa10100","title":"TWIDC","icon":"server","path":"/sys-tools/twidc","paths":"","menuType":"M","action":"","permission":"","parentId":537,"noCache":false,"breadcrumb":"","component":"/infa/region/index","sort":1,"visible":"0","isFrame":"","sysApi":null,"apis":null,"dataScope":"","params":"","RoleId":0,"children":[{"menuId":10101,"menuName":"Infa10101","title":"Cacti","icon":"link","path":"/sys-tools/twidc/10101","paths":"","menuType":"C","action":"","permission":"","parentId":10100,"noCache":false,"breadcrumb":"","component":"/infa/link/index","sort":1,"visible":"0","isFrame":"","sysApi":null,"apis":null,"dataScope":"","params":"","RoleId":0,"is_select":false,"appCode":"","seedCode":null,"createBy":0,"updateBy":0,"createdAt":"2026-10-21T08:50:44.815962733Z","updatedAt":"0001-01-01T00:00:00Z"},{"menuId":10102,"menuName":"Infa10102","title":"Zabbix","icon":"link","path":"/sys-tools/twidc/10102","paths":"","menuType":"C","action":"","permission":"","parentId":10100,"noCache":false,"breadcrumb":"","component":"/infa/link/index","sort":2,"visible":"0","isFrame":"","sysApi":null,"apis":null,"dataScope":"","params":"","RoleId":0,"is_select":false,"appCode":"","seedCode":null,"createBy":0,"updateBy":0,"createdAt":"2026-10-21T08:50:44.816478058Z","updatedAt":"0001-01-01T00:00:00Z"},{"menuId":10103,"menuName":"Infa10103","title":"WAN PRTG","icon":"link","path":"/sys-tools/twidc/10103","paths":"","menuType":"C","action":"","permission":"","parentId":10100,"noCache":false,"breadcrumb":"","component":"/infa/link/index","sort":3,"visible":"0","isFrame":"","sysApi":null,"apis":null,"dataScope":"","params":"","RoleId":0,"is_select":false,"appCode":"","seedCode":null,"createBy":0,"updateBy":0,"createdAt":"2026-10-21T08:50:44.816956369Z","updatedAt":"0001-01-01T00:00:00Z"},{"menuId":10104,"menuName":"Infa10104","title":"LAN PRTG","icon":"link","path":"/sys-tools/twidc/10104","paths":"","menuType":"C","action":"","permission":"","parentId":10100,"noCache":false,"breadcrumb":"","component":"/infa/link/index","sort":4,"visible":"0","isFrame":"","sysApi":null,"apis":null,"dataScope":"","params":"","RoleId":0,"is_select":false,"appCode":"","seedCode":null,"createBy":0,"updateBy":0,"createdAt":"2026-10-21T08:50:44.817407874Z","updatedAt":"0001-01-01T00:00:00Z"},{"menuId":10106,"menuName":"Infa10106","title":"Graylog","icon":"link","path":"/sys-tools/twidc/10106","paths":"","menuType":"C","action":"","permission":"","parentId":10100,"noCache":false,"breadcrumb":"","component":"/infa/link/index","sort":6,"visible":"0","isFrame":"","sysApi":null,"apis":null,"dataScope":"","params":"","RoleId":0,"is_select":false,"appCode":"","seedCode":null,"createBy":0,"updateBy":0,"createdAt":"2026-10-21T08:50:44.818149893Z","updatedAt":"0001-01-01T00:00:00Z"}],"is_select":false,"appCode":"","seedCode":null,"createBy":0,"updateBy":0,"createdAt":"2026-10-21T08:50:44.815444251Z","updatedAt":"0001-01-01T00:00:00Z"},{"menuId":10200,"menuName":"Infa10200","title":"JPIDC","icon":"server","path":"/sys-tools/jpidc","paths":"","menuType":"M","action":"","permission":"","parentId":537,"noCache":false,"breadcrumb":"","component":"/infa/region/index","sort":2,"visible":"0","isFrame":"","sysApi":null,"apis":null,"dataScope":"","params":"","RoleId":0,"children":[{"menuId":10202,"menuName":"Infa10202","title":"Zabbix","icon":"link","path":"/sys-tools/jpidc/10202","paths":"","menuType":"C","action":"","permission":"","parentId":10200,"noCache":false,"breadcrumb":"","component":"/infa/link/index","sort":2,"visible":"0","isFrame":"","sysApi":null,"apis":null,"dataScope":"","params":"","RoleId":0,"is_select":false,"appCode":"","seedCode":null,"createBy":0,"updateBy":0,"createdAt":"2026-10-21T08:50:44.822010608Z","updatedAt":"0001-01-01T00:00:00Z"}],"is_select":false,"appCode":"","seedCode":null,"createBy":0,"updateBy":0,"createdAt":"2026-10-21T08:50:44.821164787Z","updatedAt":"0001-01-01T00:00:00Z"}],"is_select":false,"appCode":"","seedCode":null,"createBy":1,"updateBy":1,"createdAt":"2021-05-21T11:13:32.166Z","updatedAt":"2026-10-21T08:50:44.814402239Z"}]},"/api/v1/user/profile":{"requestId":"16ec3116-bfbf-4d21-9a2c-477593011e52","code":200,"msg":"查询成功","data":{"posts":[],"roles":[{"roleId":2,"roleName":"TW 維運","status":"2","roleKey":"tw-ops","roleSort":1,"flag":"","remark":"","admin":false,"dataScope":"1","params":"","menuIds":null,"deptIds":null,"sysDept":null,"sysMenu":null,"createBy":0,"updateBy":0,"createdAt":"2026-10-21T08:50:57.91807613Z","updatedAt":"2026-10-21T08:50:57.91807613Z"}],"user":{"userId":2,"username":"demo","nickName":"值班 Demo","phone":"0900000000","roleId":2,"avatar":"","sex":"0","email":"demo@example.com","deptId":1,"postId":0,"remark":"","status":"2","deptIds":[1],"postIds":[0],"roleIds":[2],"dept":{"deptId":1,"parentId":0,"deptPath":"/0/1/","deptName":"爱拓科技","sort":0,"leader":"aituo","phone":"13782218188","email":"atuo@aituo.com","status":2,"createBy":1,"updateBy":1,"createdAt":"2021-05-13T19:56:37.913Z","updatedAt":"2021-06-05T17:06:44.96Z","dataScope":"","params":"","children":null},"createBy":1,"updateBy":0,"createdAt":"2026-10-21T08:50:58.037637163Z","updatedAt":"2026-10-21T08:50:58.037637163Z"}}}}}
 \ No newline at end of file
+diff --git a/src/directive/permission/permisaction.js b/src/directive/permission/permisaction.js
+index b19178a..56d2442 100644
+--- a/src/directive/permission/permisaction.js
++++ b/src/directive/permission/permisaction.js
+@@ -17,7 +17,7 @@ export default {
+         el.parentNode && el.parentNode.removeChild(el)
+       }
+     } else {
+-      throw new Error(`请设置操作权限标签值`)
++      throw new Error('v-permisaction needs a list of permission labels')
+     }
+   }
+ }
 diff --git a/src/env.d.ts b/src/env.d.ts
 index 0f8e846..7aada2b 100644
 --- a/src/env.d.ts
@@ -2736,20 +3007,71 @@ index af02e50..d203b82 100644
                  <svg viewBox="64 64 896 896" data-icon="check" width="1em" height="1em" :fill="theme" aria-hidden="true" focusable="false" class=""><path d="M912 190h-69.9c-9.8 0-19.1 4.5-25.1 12.2L404.7 724.5 207 474a32 32 0 0 0-25.1-12.2H112c-6.7 0-10.4 7.7-6.3 12.9l273.9 347c12.8 16.2 37.4 16.2 50.3 0l488.4-618.9c4.1-5.1.4-12.8-6.3-12.8z" />
                  </svg>
                </i>
+diff --git a/src/main.js b/src/main.js
+index a989f8a..169901b 100644
+--- a/src/main.js
++++ b/src/main.js
+@@ -47,11 +47,6 @@ import BasicLayout from '@/layout/BasicLayout'
+ 
+ import 'remixicon/fonts/remixicon.css'
+ 
+-console.info(`欢迎使用go-admin，谢谢您对我们的支持，在使用过程中如果有什么问题，
+-请访问https://github.com/go-admin-team/go-admin 或者
+- https://github.com/go-admin-team/go-admin-ui 向我们反馈，
+- 谢谢！`)
+-
+ // 创建 Vue 应用实例
+ const app = createApp(App)
+ 
+diff --git a/src/router/index.js b/src/router/index.js
+index 354fc99..52d9f19 100644
+--- a/src/router/index.js
++++ b/src/router/index.js
+@@ -71,7 +71,7 @@ export const constantRoutes = [
+         path: 'dashboard',
+         component: () => import('@/views/dashboard/index'),
+         name: 'Dashboard',
+-        meta: { title: '首页', titleKey: 'route.dashboard', icon: 'dashboard', affix: true }
++        meta: { title: 'Home', titleKey: 'route.dashboard', icon: 'dashboard', affix: true }
+       }
+     ]
+   },
+@@ -85,7 +85,7 @@ export const constantRoutes = [
+         path: 'index',
+         component: () => import('@/views/profile/index'),
+         name: 'Profile',
+-        meta: { title: '个人中心', titleKey: 'route.profile', icon: 'user', noCache: true }
++        meta: { title: 'Profile', titleKey: 'route.profile', icon: 'user', noCache: true }
+       }
+     ]
+   }
 diff --git a/src/settings.js b/src/settings.js
-index e130798..da81c25 100644
+index e130798..9584179 100644
 --- a/src/settings.js
 +++ b/src/settings.js
-@@ -1,6 +1,9 @@
+@@ -1,5 +1,8 @@
  export default {
-   title: 'go-admin后台管理系统',
- 
+-  title: 'go-admin后台管理系统',
++  title: 'INFA Monitoring Portal',
++
 +  /** 瀏覽器分頁標題（INFA：固定用英文名稱，每一頁都一樣） */
 +  tabTitle: 'INFA Monitoring Portal',
-+
+ 
    /**
     * @type {boolean} true | false
-    * @description Whether show the settings right-panel
+diff --git a/src/utils/costum.js b/src/utils/costum.js
+index 0946b1a..0df435b 100644
+--- a/src/utils/costum.js
++++ b/src/utils/costum.js
+@@ -34,7 +34,7 @@ export function parseTime(time, pattern) {
+   const time_str = format.replace(/{(y|m|d|h|i|s|a)+}/g, (result, key) => {
+     let value = formatObj[key]
+     // Note: getDay() returns 0 on Sunday
+-    if (key === 'a') { return ['日', '一', '二', '三', '四', '五', '六'][value] }
++    if (key === 'a') { return ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][value] }
+     if (result.length > 0 && value < 10) {
+       value = '0' + value
+     }
 diff --git a/src/utils/get-page-title.js b/src/utils/get-page-title.js
 index 9528a74..8f9dd08 100644
 --- a/src/utils/get-page-title.js
@@ -2768,6 +3090,56 @@ index 9528a74..8f9dd08 100644
 +// INFA：瀏覽器分頁標題固定用英文名稱，不加頁面名稱，也不跟後台的系統名稱連動
 +export default function getPageTitle() {
 +  return settings.tabTitle
+ }
+diff --git a/src/utils/index.js b/src/utils/index.js
+index 53d05a2..e898fd1 100644
+--- a/src/utils/index.js
++++ b/src/utils/index.js
+@@ -37,7 +37,7 @@ export function parseTime(time, cFormat) {
+   const time_str = format.replace(/{([ymdhisa])+}/g, (result, key) => {
+     const value = formatObj[key]
+     // Note: getDay() returns 0 on Sunday
+-    if (key === 'a') { return ['日', '一', '二', '三', '四', '五', '六'][value] }
++    if (key === 'a') { return ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][value] }
+     return value.toString().padStart(2, '0')
+   })
+ 
+@@ -65,14 +65,14 @@ export function formatTime(time, option) {
+   const diff = (now - d) / 1000
+ 
+   if (diff < 30) {
+-    return '刚刚'
++    return 'just now'
+   } else if (diff < 3600) {
+     // less 1 hour
+-    return Math.ceil(diff / 60) + '分钟前'
++    return Math.ceil(diff / 60) + ' min ago'
+   } else if (diff < 3600 * 24) {
+-    return Math.ceil(diff / 3600) + '小时前'
++    return Math.ceil(diff / 3600) + ' h ago'
+   } else if (diff < 3600 * 24 * 2) {
+-    return '1天前'
++    return '1 day ago'
+   }
+   if (option) {
+     return parseTime(time, option)
+@@ -80,13 +80,12 @@ export function formatTime(time, option) {
+     return (
+       d.getMonth() +
+       1 +
+-      '月' +
++      '/' +
+       d.getDate() +
+-      '日' +
++      ' ' +
+       d.getHours() +
+-      '时' +
+-      d.getMinutes() +
+-      '分'
++      ':' +
++      String(d.getMinutes()).padStart(2, '0')
+     )
+   }
  }
 diff --git a/src/utils/request.ts b/src/utils/request.ts
 index d61ce21..03c1ff4 100644
@@ -3392,19 +3764,50 @@ index d3dd4fa..a4962e8 100644
    })
  
    test('a page the guard turned away is not reported as visited', async({ page }) => {
+diff --git a/tests/unit/directive/permisaction.spec.js b/tests/unit/directive/permisaction.spec.js
+index ba3286d..512c57e 100644
+--- a/tests/unit/directive/permisaction.spec.js
++++ b/tests/unit/directive/permisaction.spec.js
+@@ -33,6 +33,6 @@ describe('v-permisaction', () => {
+   })
+ 
+   it('权限值为空数组时抛出错误', () => {
+-    expect(() => factory([])).toThrow('请设置操作权限标签值')
++    expect(() => factory([])).toThrow('v-permisaction needs a list of permission labels')
+   })
+ })
 diff --git a/tests/unit/lang/coverage.spec.ts b/tests/unit/lang/coverage.spec.ts
-index 3a7d9a3..333a8e6 100644
+index 3a7d9a3..ec6d7f5 100644
 --- a/tests/unit/lang/coverage.spec.ts
 +++ b/tests/unit/lang/coverage.spec.ts
-@@ -54,7 +54,6 @@ const KNOWN: Record<string, number> = {
+@@ -48,32 +48,18 @@ const KNOWN: Record<string, number> = {
+   'src/components/ImageCropper/index.vue': 20,
+   'src/components/ImageCropper/utils/effectRipple.js': 3,
  
-   // The application title, which ends up in the browser tab.
-   'src/settings.js': 1,
+-  // Weekday names -- date localisation rather than copy.
+-  'src/utils/index.js': 9,
+-  'src/utils/costum.js': 1,
+-
+-  // The application title, which ends up in the browser tab.
+-  'src/settings.js': 1,
 -  'src/utils/get-page-title.js': 1,
+-
+-  // Fallback titles for the fixed routes. Both already carry a titleKey, so
+-  // these render only when the pack is missing the key.
+-  'src/router/index.js': 3,
+-  'src/components/Breadcrumb/index.vue': 1,
+-
+-  // Not user-facing: a console banner, a developer-facing throw, and comments
+-  // the stripper below does not reach (see its note).
+-  'src/main.js': 4,
+-  'src/directive/permission/permisaction.js': 1,
++  // A trailing comment on the history mode line.
++  'src/router/index.js': 1,
++
++  // Not user-facing: comments the stripper below does not reach (see its note).
+   'src/directive/waves/waves.js': 3,
+   'src/utils/request.ts': 2,
  
-   // Fallback titles for the fixed routes. Both already carry a titleKey, so
-   // these render only when the pack is missing the key.
-@@ -71,9 +70,8 @@ const KNOWN: Record<string, number> = {
    // Trailing `//` comments, mostly: SCSS design notes on the login page and
    // Chinese notes after code elsewhere. Overcounted rather than missed, which
    // is the safe direction for a ratchet.
@@ -3455,6 +3858,56 @@ index 8e70a6d..66c64b3 100644
  })
  
  /**
+diff --git a/tests/unit/utils/formatTime.spec.js b/tests/unit/utils/formatTime.spec.js
+index d07e414..0f6a895 100644
+--- a/tests/unit/utils/formatTime.spec.js
++++ b/tests/unit/utils/formatTime.spec.js
+@@ -4,22 +4,22 @@ describe('Utils:formatTime', () => {
+   const retrofit = 5 * 1000
+ 
+   it('ten digits timestamp', () => {
+-    expect(formatTime((d / 1000).toFixed(0))).toBe('7月13日17时54分')
++    expect(formatTime((d / 1000).toFixed(0))).toBe('7/13 17:54')
+   })
+   it('test now', () => {
+-    expect(formatTime(+new Date() - 1)).toBe('刚刚')
++    expect(formatTime(+new Date() - 1)).toBe('just now')
+   })
+   it('less two minute', () => {
+-    expect(formatTime(+new Date() - 60 * 2 * 1000 + retrofit)).toBe('2分钟前')
++    expect(formatTime(+new Date() - 60 * 2 * 1000 + retrofit)).toBe('2 min ago')
+   })
+   it('less two hour', () => {
+-    expect(formatTime(+new Date() - 60 * 60 * 2 * 1000 + retrofit)).toBe('2小时前')
++    expect(formatTime(+new Date() - 60 * 60 * 2 * 1000 + retrofit)).toBe('2 h ago')
+   })
+   it('less one day', () => {
+-    expect(formatTime(+new Date() - 60 * 60 * 24 * 1 * 1000)).toBe('1天前')
++    expect(formatTime(+new Date() - 60 * 60 * 24 * 1 * 1000)).toBe('1 day ago')
+   })
+   it('more than one day', () => {
+-    expect(formatTime(d)).toBe('7月13日17时54分')
++    expect(formatTime(d)).toBe('7/13 17:54')
+   })
+   it('format', () => {
+     expect(formatTime(d, '{y}-{m}-{d} {h}:{i}')).toBe('2018-07-13 17:54')
+diff --git a/tests/unit/utils/parseTime.spec.js b/tests/unit/utils/parseTime.spec.js
+index 77ecb9d..10f349c 100644
+--- a/tests/unit/utils/parseTime.spec.js
++++ b/tests/unit/utils/parseTime.spec.js
+@@ -16,10 +16,10 @@ describe('Utils:parseTime', () => {
+     expect(parseTime(d, '{y}/{m}/{d} {h}-{i}')).toBe('2018/07/13 17-54')
+   })
+   it('get the day of the week', () => {
+-    expect(parseTime(d, '{a}')).toBe('五') // 星期五
++    expect(parseTime(d, '{a}')).toBe('Fri')
+   })
+   it('get the day of the week', () => {
+-    expect(parseTime(+d + 1000 * 60 * 60 * 24 * 2, '{a}')).toBe('日') // 星期日
++    expect(parseTime(+d + 1000 * 60 * 60 * 24 * 2, '{a}')).toBe('Sun')
+   })
+   it('empty argument', () => {
+     expect(parseTime()).toBeNull()
 diff --git a/vite.config.mjs b/vite.config.mjs
 index 9cca6c2..d1a9782 100644
 --- a/vite.config.mjs
