@@ -1978,6 +1978,292 @@ PLI?e~KIbn@&rk6$x*^Ts
 literal 0
 HcmV?d00001
 
+diff --git a/src/components/ParticleWave/index.vue b/src/components/ParticleWave/index.vue
+new file mode 100644
+index 0000000..0f93166
+--- /dev/null
++++ b/src/components/ParticleWave/index.vue
+@@ -0,0 +1,29 @@
++<template>
++  <!-- Live particle-wave backdrop; see wave.js -->
++  <canvas ref="canvas" class="particle-wave" aria-hidden="true" />
++</template>
++
++<script>
++import { startParticleWave } from './wave'
++
++export default {
++  name: 'ParticleWave',
++  mounted() {
++    this.stop = startParticleWave(this.$refs.canvas)
++  },
++  beforeUnmount() {
++    this.stop?.()
++  }
++}
++</script>
++
++<style scoped>
++.particle-wave {
++  position: absolute;
++  inset: 0;
++  width: 100%;
++  height: 100%;
++  display: block;
++  pointer-events: none;
++}
++</style>
+diff --git a/src/components/ParticleWave/wave.js b/src/components/ParticleWave/wave.js
+new file mode 100644
+index 0000000..9974d15
+--- /dev/null
++++ b/src/components/ParticleWave/wave.js
+@@ -0,0 +1,245 @@
++/**
++ * Particle-wave backdrop for the login hero, drawn live on a canvas.
++ *
++ * Three layers, back to front:
++ *   - a dotted floor whose lines run into a vanishing point on the horizon;
++ *   - bundles of fine luminous strands that rise on both sides and settle
++ *     into the horizon glow in the middle;
++ *   - out-of-focus bokeh drifting in the foreground.
++ *
++ * Everything moves on one slow clock (SPEED) so the scene reads as calm and
++ * steady rather than busy.
++ */
++
++const SPEED = 0.32 // global time scale; lower = calmer
++
++// Floor
++const FLOOR_COLS = 150
++const FLOOR_ROWS = 46
++const NEAR = 40
++const FAR = 2400
++const FOCAL = 520
++const CAM_Y = 150 // camera height above the floor
++
++// Strands
++const STRANDS = 46
++const STRAND_STEPS = 160
++
++const rand = (a, b) => a + Math.random() * (b - a)
++
++export function startParticleWave(canvas) {
++  const ctx = canvas.getContext('2d')
++  const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
++  const bokeh = []
++  const strands = []
++  let w = 0
++  let h = 0
++  let horizon = 0
++  let raf = 0
++
++  for (let i = 0; i < STRANDS; i++) {
++    strands.push({
++      d: i / (STRANDS - 1), // 0 = top of the bundle, 1 = bottom
++      phase: rand(0, Math.PI * 2),
++      amp: rand(0.7, 1.3),
++      dotEvery: 3 + Math.floor(rand(0, 4))
++    })
++  }
++
++  function resize() {
++    const dpr = Math.min(window.devicePixelRatio || 1, 2)
++    w = canvas.clientWidth
++    h = canvas.clientHeight
++    horizon = h * 0.56
++    canvas.width = Math.round(w * dpr)
++    canvas.height = Math.round(h * dpr)
++    ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
++    bokeh.length = 0
++    const n = Math.round(w * h / 26000)
++    for (let i = 0; i < n; i++) {
++      const big = Math.random() < 0.3
++      bokeh.push({
++        x: rand(0, w),
++        y: big ? rand(h * 0.65, h * 1.02) : rand(h * 0.08, h),
++        r: big ? rand(6, 20) : rand(1, 2.6),
++        vx: rand(-0.06, 0.06),
++        vy: rand(-0.08, -0.02),
++        a: big ? rand(0.12, 0.35) : rand(0.3, 0.8),
++        p: rand(0, Math.PI * 2)
++      })
++    }
++  }
++
++  // Height of the bundle above the horizon at u (-1..1 across the screen):
++  // low in the centre, cresting near the sides, easing off at the edges.
++  function lift(u) {
++    const a = Math.min(1, Math.abs(u) / 0.9)
++    return a * a * (3 - 2 * a)
++  }
++
++  function background() {
++    const g = ctx.createLinearGradient(0, 0, 0, h)
++    g.addColorStop(0, '#01030c')
++    g.addColorStop(0.45, '#04133a')
++    g.addColorStop(0.62, '#062463')
++    g.addColorStop(1, '#020b26')
++    ctx.fillStyle = g
++    ctx.fillRect(0, 0, w, h)
++
++    // Wide soft glow plus a flattened bright core on the horizon.
++    const r = Math.max(w, h) * 0.6
++    const glow = ctx.createRadialGradient(w / 2, horizon, 0, w / 2, horizon, r)
++    glow.addColorStop(0, 'rgba(50,140,255,0.55)')
++    glow.addColorStop(0.3, 'rgba(25,90,230,0.22)')
++    glow.addColorStop(1, 'rgba(0,0,0,0)')
++    ctx.fillStyle = glow
++    ctx.fillRect(0, 0, w, h)
++
++    ctx.save()
++    ctx.translate(w / 2, horizon)
++    ctx.scale(1, 0.16)
++    const core = ctx.createRadialGradient(0, 0, 0, 0, 0, w * 0.32)
++    core.addColorStop(0, 'rgba(120,200,255,0.75)')
++    core.addColorStop(0.4, 'rgba(60,150,255,0.25)')
++    core.addColorStop(1, 'rgba(0,0,0,0)')
++    ctx.fillStyle = core
++    ctx.fillRect(-w, -w, w * 2, w * 2)
++    ctx.restore()
++  }
++
++  // Floor point at screen-relative column u (-1.3..1.3) and depth z.
++  function floorPoint(u, z, t) {
++    const s = FOCAL / z
++    const wave =
++      Math.sin(u * 3.2 + z * 0.0035 - t * 0.9) * 22 +
++      Math.sin(z * 0.006 + t * 0.7 + u * 1.5) * 14
++    const y = wave * (0.5 + u * u) + u * u * 30
++    const k = s / (FOCAL / 260) // u = ±1 reaches the screen edge at z = 260
++    return [w / 2 + u * k * w * 0.5, horizon + (CAM_Y - y) * s * (h / 900), s]
++  }
++
++  function drawFloor(t) {
++    const zs = []
++    for (let r = 0; r < FLOOR_ROWS; r++) {
++      const k = r / (FLOOR_ROWS - 1)
++      zs.push(NEAR + Math.pow(k, 1.7) * (FAR - NEAR))
++    }
++
++    // Lines running into the vanishing point give the floor its depth.
++    ctx.lineWidth = 0.7
++    for (let c = 0; c < FLOOR_COLS; c++) {
++      const u = (c / (FLOOR_COLS - 1) - 0.5) * 4
++      const centre = 1 - Math.min(1, Math.abs(u) / 1.6)
++      ctx.beginPath()
++      for (let r = 0; r < FLOOR_ROWS; r++) {
++        const [x, y] = floorPoint(u, zs[r], t)
++        if (r) ctx.lineTo(x, y)
++        else ctx.moveTo(x, y)
++      }
++      ctx.strokeStyle = `rgba(70,150,255,${0.05 + 0.13 * centre})`
++      ctx.stroke()
++    }
++
++    for (let r = FLOOR_ROWS - 1; r >= 0; r--) {
++      const z = zs[r]
++      const fade = 1 - (r / (FLOOR_ROWS - 1)) * 0.6
++      for (let c = 0; c < FLOOR_COLS; c++) {
++        const u = (c / (FLOOR_COLS - 1) - 0.5) * 4
++        const [x, y, s] = floorPoint(u, z, t)
++        if (x < -10 || x > w + 10 || y < horizon - 40 || y > h + 10) continue
++        const tw = 0.65 + 0.35 * Math.sin(t * 1.4 + c * 1.9 + r * 2.7)
++        ctx.fillStyle = `rgba(70,165,255,${0.75 * fade * tw})`
++        ctx.beginPath()
++        ctx.arc(x, y, Math.max(0.6, s * 1.6), 0, Math.PI * 2)
++        ctx.fill()
++      }
++    }
++  }
++
++  function strandY(st, u, t) {
++    const L = lift(u)
++    const swell =
++      Math.sin(u * 2.4 - t * 0.55 + st.phase * 0.15) * 0.05 +
++      Math.sin(u * 5.1 + t * 0.4 + st.d * 2.2) * 0.022 * st.amp
++    const spread = (st.d - 0.5) * (0.03 + L * 0.2) // bundle fans out where it rises
++    return horizon - h * (L * 0.2 + swell * (0.4 + L) - spread)
++  }
++
++  function drawStrands(t) {
++    for (const st of strands) {
++      const edge = 1 - Math.abs(st.d - 0.5) * 1.4
++      ctx.beginPath()
++      for (let i = 0; i <= STRAND_STEPS; i++) {
++        const u = (i / STRAND_STEPS) * 2.2 - 1.1
++        const x = w / 2 + u * w * 0.5
++        const y = strandY(st, u, t)
++        if (i) ctx.lineTo(x, y)
++        else ctx.moveTo(x, y)
++      }
++      ctx.strokeStyle = `rgba(80,170,255,${0.06 + 0.16 * edge})`
++      ctx.lineWidth = 0.9
++      ctx.stroke()
++
++      // Particles riding along the strand, drifting slowly sideways.
++      const drift = (t * 0.02 + st.phase) % 1
++      for (let i = 0; i <= STRAND_STEPS; i += st.dotEvery) {
++        const u = (((i / STRAND_STEPS) + drift) % 1) * 2.2 - 1.1
++        const L = lift(u)
++        const x = w / 2 + u * w * 0.5
++        const y = strandY(st, u, t)
++        const tw = 0.5 + 0.5 * Math.sin(t * 1.6 + i * 0.9 + st.phase)
++        const a = (0.25 + 0.75 * L) * (0.4 + 0.6 * edge) * tw
++        ctx.fillStyle = `rgba(120,200,255,${a})`
++        ctx.beginPath()
++        ctx.arc(x, y, 0.8 + L * 1.6, 0, Math.PI * 2)
++        ctx.fill()
++      }
++    }
++  }
++
++  function drawBokeh(t) {
++    for (const b of bokeh) {
++      if (!reduceMotion) {
++        b.x += b.vx
++        b.y += b.vy
++        if (b.y < -30) { b.y = h + 30; b.x = rand(0, w) }
++        if (b.x < -30) b.x = w + 30
++        else if (b.x > w + 30) b.x = -30
++      }
++      const a = b.a * (0.7 + 0.3 * Math.sin(t * 0.6 + b.p))
++      const g = ctx.createRadialGradient(b.x, b.y, 0, b.x, b.y, b.r)
++      g.addColorStop(0, `rgba(70,160,255,${a})`)
++      g.addColorStop(0.7, `rgba(70,160,255,${a * 0.6})`)
++      g.addColorStop(1, 'rgba(70,160,255,0)')
++      ctx.fillStyle = g
++      ctx.beginPath()
++      ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2)
++      ctx.fill()
++    }
++  }
++
++  function frame(ms) {
++    if (!reduceMotion) raf = requestAnimationFrame(frame)
++    if (!w || !h) return
++    const t = (ms / 1000) * SPEED
++    background()
++    ctx.globalCompositeOperation = 'lighter'
++    drawFloor(t)
++    drawStrands(t)
++    drawBokeh(t)
++    ctx.globalCompositeOperation = 'source-over'
++  }
++
++  // Under reduced motion, draw a single still frame on each resize.
++  const observer = new ResizeObserver(() => {
++    resize()
++    if (reduceMotion) frame(8000)
++  })
++  observer.observe(canvas)
++  if (!reduceMotion) raf = requestAnimationFrame(frame)
++
++  return () => {
++    cancelAnimationFrame(raf)
++    observer.disconnect()
++  }
++}
 diff --git a/src/demo/adapter.ts b/src/demo/adapter.ts
 new file mode 100644
 index 0000000..653400a
@@ -2529,18 +2815,66 @@ index 0000000..4fb437b
 +defineOptions({ name: 'InfaRegion' })
 +</script>
 diff --git a/src/views/login/index.vue b/src/views/login/index.vue
-index ccffcab..ee682c3 100644
+index ccffcab..64c7836 100644
 --- a/src/views/login/index.vue
 +++ b/src/views/login/index.vue
-@@ -146,6 +146,7 @@ import { getCodeImg } from '@/api/login'
+@@ -1,35 +1,15 @@
+ <template>
+   <div class="login-page">
+ 
+-    <!-- 左侧：以启动 go-admin 的真实终端序列作为主视觉 -->
++    <!-- 左側：粒子波浪動態背景作為主視覺 -->
+     <div class="stage">
+-      <div class="stage-glow" />
++      <ParticleWave />
+ 
+       <header class="stage-head">
+         <span class="wordmark">go<span class="wordmark-dash">-</span>admin</span>
+         <span class="stage-ver">v{{ version }}</span>
+       </header>
+ 
+-      <div class="stage-main">
+-        <div class="term" role="img" :aria-label="$t('login.terminalAlt')">
+-          <div class="term-bar">
+-            <i class="dot dot--r" /><i class="dot dot--y" /><i class="dot dot--g" />
+-            <span class="term-path">~/go-admin</span>
+-          </div>
+-          <pre class="term-body"><code><span class="l l1"><span class="p">$</span> ./go-admin <span class="cmd">migrate</span> <span class="arg">-c config/settings.yml</span></span>
+-<span class="l l2"><span class="ok">✓</span> database initialized</span>
+-<span class="l l3"><span class="p">$</span> ./go-admin <span class="cmd">server</span> <span class="arg">-c config/settings.yml</span></span>
+-<span class="l l4"><span class="ok">Server run at:</span></span>
+-<span class="l l5">-  Local:   <span class="url">http://localhost:<span class="port">8000</span>/</span></span>
+-<span class="l l6"><span class="ok">Swagger run at:</span></span>
+-<span class="l l7">-  Local:   <span class="url">http://localhost:<span class="port">8000</span>/swagger/admin/index.html</span></span>
+-<span class="l l8"><span class="p">$</span> <b class="caret" /></span></code></pre>
+-        </div>
+-
+-        <!-- 吉祥物站在终端窗体的基线上，视线朝向左侧的输出 -->
+-        <Gopher class="mascot" />
+-      </div>
+-
+       <footer class="stage-foot">
+         <ul class="stack">
+           <li>Gin</li><li>GORM</li><li>Casbin</li><li>Vue 3</li><li>Element Plus</li>
+@@ -146,14 +126,15 @@ import { getCodeImg } from '@/api/login'
  import { prefetchOnIdle } from '@/utils/prefetch'
  import { useSystemStore } from '@/stores/system'
  import { useUserStore } from '@/stores/user'
 +import settings from '@/settings'
  import { User, Lock, Key, View, Hide, Loading } from '@element-plus/icons-vue'
- import Gopher from '@/components/Gopher'
+-import Gopher from '@/components/Gopher'
++import ParticleWave from '@/components/ParticleWave'
  import LangSelect from '@/components/LangSelect'
-@@ -164,7 +165,8 @@ export default {
+ import { version } from '../../../package.json'
+ 
+ export default {
+   name: 'LoginPage',
+-  components: { Gopher, LangSelect },
++  components: { LangSelect, ParticleWave },
+   setup() {
+     return { User, Lock, Key, View, Hide, Loading }
+   },
+@@ -164,7 +145,8 @@ export default {
        loginForm: {
          username: 'admin',
          password: '123456',
@@ -2550,7 +2884,7 @@ index ccffcab..ee682c3 100644
          uuid: ''
        },
        passwordType: 'password',
-@@ -223,7 +225,7 @@ export default {
+@@ -223,7 +205,7 @@ export default {
      getSystemSetting() {
        useSystemStore().settingDetail().then((ret) => {
          this.sysInfo = ret
@@ -2559,6 +2893,208 @@ index ccffcab..ee682c3 100644
        })
      },
      getCode() {
+@@ -333,29 +315,18 @@ $edge:     var(--ga-border-light);
+   &:hover { color: $go-deep; }
+ }
+ 
+-/* ── 左：终端主视觉 ─────────────────────────── */
++/* ── 左：粒子波浪主視覺 ─────────────────────── */
+ .stage {
+   position: relative;
+   width: 72%;
+   display: flex;
+   flex-direction: column;
+   padding: 44px 56px 40px;
+-  background: linear-gradient(160deg, #0f1f3a 0%, #16305a 55%, #112544 100%);
++  // 粒子波浪 canvas 畫上去之前的底色
++  background: #03102e;
+   overflow: hidden;
+ }
+ 
+-// 单一光源，替代多个装饰圆
+-// 铺满整个区域，让渐变自然衰减至透明；
+-// 若给元素本身加 border-radius，渐变会在未完全透明处被裁出硬边
+-.stage-glow {
+-  position: absolute;
+-  inset: 0;
+-  background:
+-    radial-gradient(50% 46% at 84% 62%, rgba(0, 200, 255, 0.24) 0%, transparent 70%),
+-    radial-gradient(48% 44% at 16% 24%, rgba(124, 92, 255, 0.14) 0%, transparent 68%);
+-  pointer-events: none;
+-}
+-
+ .stage-head {
+   position: relative;
+   display: flex;
+@@ -379,110 +350,9 @@ $edge:     var(--ga-border-light);
+   color: $dim;
+ }
+ 
+-/* 主区：终端 + 吉祥物。两端对齐舞台边缘，与上方 wordmark、
+-   下方备案号共用同一组左右基准线；底部对齐让吉祥物站在终端基线上 */
+-.stage-main {
+-  position: relative;
+-  display: flex;
+-  align-items: flex-end;
+-  justify-content: space-between;
+-  gap: 32px;
+-  // 上下 auto：在页眉与页脚之间居中，避免主体压在顶部、下方留出大片空白
+-  margin: auto 0;
+-}
+-
+-.mascot {
+-  flex: 0 0 clamp(130px, 14vw, 194px);
+-  margin-bottom: -6px;
+-  filter: drop-shadow(0 16px 24px rgba(0, 0, 0, 0.32));
+-}
+-
+-/* 终端窗体 */
+-.term {
+-  position: relative;
+-  flex: 0 1 620px;
+-  min-width: 0;
+-  border: 1px solid $line;
+-  border-radius: 10px;
+-  background: rgba(8, 20, 40, 0.62);
+-  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.45);
+-  overflow: hidden;
+-}
+-
+-.term-bar {
+-  display: flex;
+-  align-items: center;
+-  gap: 7px;
+-  padding: 11px 14px;
+-  border-bottom: 1px solid $line;
+-  background: rgba(255, 255, 255, 0.02);
+-}
+-
+-.dot { width: 11px; height: 11px; border-radius: 50%; display: inline-block; }
+-.dot--r { background: #ff5f57; }
+-.dot--y { background: #febc2e; }
+-.dot--g { background: #28c840; }
+-
+-.term-path {
+-  margin-left: 8px;
+-  font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+-  font-size: 12px;
+-  color: $dim;
+-}
+-
+-.term-body {
+-  margin: 0;
+-  padding: 20px 22px 24px;
+-  font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+-  font-size: 12.5px;
+-  line-height: 1.85;
+-  color: #c9d1d9;
+-  white-space: pre-wrap;
+-  word-break: break-all;
+-
+-  .p    { color: $go; margin-right: 6px; }
+-  .ok   { color: $ok; }
+-  .cmd  { color: #fff; font-weight: 600; }        // 子命令
+-  .arg  { color: $dim; }                           // 参数
+-  .url  { color: $go; text-decoration-color: rgba(0, 200, 255, 0.35); }
+-  .port { color: $amber; }                         // 端口
+-
+-  // 逐行浮现，模拟输出节奏；只播一次，不循环
+-  .l {
+-    display: block;
+-    opacity: 0;
+-    animation: line-in 0.32s ease forwards;
+-  }
+-  .l1 { animation-delay: 0.15s; }
+-  .l2 { animation-delay: 0.50s; }
+-  .l3 { animation-delay: 0.80s; }
+-  .l4 { animation-delay: 1.10s; }
+-  .l5 { animation-delay: 1.28s; }
+-  .l6 { animation-delay: 1.46s; }
+-  .l7 { animation-delay: 1.64s; }
+-  .l8 { animation-delay: 1.86s; }
+-}
+-
+-.caret {
+-  display: inline-block;
+-  width: 8px;
+-  height: 15px;
+-  vertical-align: -2px;
+-  background: $go;
+-  animation: blink 1.1s step-end infinite;
+-}
+-
+-@keyframes line-in {
+-  from { opacity: 0; transform: translateY(4px); }
+-  to   { opacity: 1; transform: none; }
+-}
+-
+-@keyframes blink {
+-  50% { opacity: 0; }
+-}
+-
+ .stage-foot {
+   position: relative;
++  margin-top: auto;
+   display: flex;
+   align-items: center;
+   justify-content: space-between;
+@@ -639,53 +509,23 @@ $edge:     var(--ga-border-light);
+ }
+ 
+ /* ── 响应式 ───────────────────────────────── */
+-// 再窄下去终端会被挤到需要频繁折行，此时宁可让出吉祥物
+-@media (max-width: 1120px) {
+-  .mascot { display: none; }
+-  .term { flex: 1 1 auto; }
+-}
+-
+ @media (max-width: 1100px) {
+   .stage { width: 60%; padding: 32px 36px; }
+ }
+ 
+ @media (max-width: 860px) {
+   .login-page { flex-direction: column; }
+-  .stage { width: 100%; height: auto; padding: 24px; }
+-  .stage-main { margin: 20px 0; }
+-  .term-body { font-size: 12px; line-height: 1.9; }
++  .stage { width: 100%; height: 240px; flex: none; padding: 24px; }
+   .stage-foot { display: none; }
+   .panel { flex: 1; padding: 32px 24px; }
+   .form-box { max-width: 340px; }
+ }
+ 
+-/*
+- * On a phone the terminal is a passenger.
+- *
+- * It is the page's main visual on a desktop, where it sits beside the form. In
+- * a stacked layout it goes above the form and takes its natural height -- eight
+- * lines of code, 493px, 60% of a 375x812 screen -- so the form it is meant to
+- * introduce is pushed into the bottom third and the submit button ends up 110px
+- * from the edge.
+- *
+- * It is also the half that reads worst there: the lines wrap mid-path
+- * (`config/settin gs.yml`), so what remains is a decorative block that has been
+- * broken to fit. The wordmark carries the brand on its own, and the form gets
+- * the screen.
+- */
++// 手機上把整個畫面留給表單：左側只剩背景和 wordmark，
++// 表單標題已經有同樣的名稱，不需要再佔一塊高度。
+ @media (max-width: 767px) {
+-  // The whole panel, not just the terminal. Once the terminal goes, what is
+-  // left is a wordmark -- and the form already opens with the same name and a
+-  // line explaining the page. Saying it twice in 375px is worse than not
+-  // branding the screen at all.
+   .stage { display: none; }
+ 
+   .panel { padding: 28px 24px 32px; }
+ }
+-
+-/* 尊重系统的减少动效偏好 */
+-@media (prefers-reduced-motion: reduce) {
+-  .term-body .l { animation: none; opacity: 1; }
+-  .caret { animation: none; }
+-}
+ </style>
 diff --git a/tests/e2e/mocked/analytics.spec.ts b/tests/e2e/mocked/analytics.spec.ts
 index d3dd4fa..a4962e8 100644
 --- a/tests/e2e/mocked/analytics.spec.ts
@@ -2576,7 +3112,7 @@ index d3dd4fa..a4962e8 100644
  
    test('a page the guard turned away is not reported as visited', async({ page }) => {
 diff --git a/tests/unit/lang/coverage.spec.ts b/tests/unit/lang/coverage.spec.ts
-index 3a7d9a3..e53c06d 100644
+index 3a7d9a3..dae3a21 100644
 --- a/tests/unit/lang/coverage.spec.ts
 +++ b/tests/unit/lang/coverage.spec.ts
 @@ -54,7 +54,6 @@ const KNOWN: Record<string, number> = {
@@ -2587,6 +3123,15 @@ index 3a7d9a3..e53c06d 100644
  
    // Fallback titles for the fixed routes. Both already carry a titleKey, so
    // these render only when the pack is missing the key.
+@@ -71,7 +70,7 @@ const KNOWN: Record<string, number> = {
+   // Trailing `//` comments, mostly: SCSS design notes on the login page and
+   // Chinese notes after code elsewhere. Overcounted rather than missed, which
+   // is the safe direction for a ratchet.
+-  'src/views/login/index.vue': 11,
++  'src/views/login/index.vue': 8,
+   'src/views/profile/userAvatar.vue': 5,
+   'src/layout/components/Settings/index.vue': 2,
+   'src/components/Share/DropdownMenu.vue': 1
 diff --git a/vite.config.mjs b/vite.config.mjs
 index 9cca6c2..d1a9782 100644
 --- a/vite.config.mjs
