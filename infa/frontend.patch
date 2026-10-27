@@ -1,6 +1,6 @@
 diff --git a/.env.demo b/.env.demo
 new file mode 100644
-index 0000000..b4b14f0
+index 0000000..f0569f9
 --- /dev/null
 +++ b/.env.demo
 @@ -0,0 +1,9 @@
@@ -9,7 +9,7 @@ index 0000000..b4b14f0
 +ENV = 'production'
 +VUE_APP_DEMO = '1'
 +VUE_APP_BASE_API = ''
-+VUE_APP_LOCALE = 'zh-CN'
++VUE_APP_LOCALE = 'en-US'
 +VUE_APP_GA_ID = ''
 +VITE_BASE = './'
 +SASS_SILENCE_DEPRECATIONS = 'legacy-js-api'
@@ -2266,13 +2266,14 @@ index 0000000..9974d15
 +}
 diff --git a/src/demo/adapter.ts b/src/demo/adapter.ts
 new file mode 100644
-index 0000000..653400a
+index 0000000..667bdd5
 --- /dev/null
 +++ b/src/demo/adapter.ts
-@@ -0,0 +1,83 @@
+@@ -0,0 +1,105 @@
 +import type { AxiosAdapter, InternalAxiosRequestConfig } from 'axios'
 +import fixtures from './fixtures.json'
-+import { i18n } from '@/lang'
++import english from './fixtures.en.json'
++import { i18n, currentLocale } from '@/lang'
 +
 +/**
 + * 展示版（VUE_APP_DEMO=1）專用：不連後端，改用錄下來的 API 回應。
@@ -2331,8 +2332,29 @@ index 0000000..653400a
 +  return undefined
 +}
 +
++/**
++ * The recordings came from a Chinese backend. In English, every recorded string
++ * that has an entry in fixtures.en.json (department, role and API names, status
++ * labels...) is swapped for its English text, so no Chinese reaches the page.
++ */
++const dictionary = english as Record<string, string>
++const translate = (value: unknown): unknown => {
++  if (typeof value === 'string') return dictionary[value] ?? value
++  if (Array.isArray(value)) return value.map(translate)
++  if (value && typeof value === 'object') {
++    return Object.fromEntries(Object.entries(value).map(([k, v]) => [k, translate(v)]))
++  }
++  return value
++}
++
 +const respond = (config: InternalAxiosRequestConfig, data: unknown) =>
-+  Promise.resolve({ data, status: 200, statusText: 'OK', headers: {}, config })
++  Promise.resolve({
++    data: currentLocale() === 'en-US' ? translate(data) : data,
++    status: 200,
++    statusText: 'OK',
++    headers: {},
++    config
++  })
 +
 +export const demoAdapter: AxiosAdapter = config => {
 +  const method = (config.method ?? 'get').toLowerCase()
@@ -2353,6 +2375,133 @@ index 0000000..653400a
 +  const hit = lookup(sets[accountOf(config)], path, query)
 +  return respond(config, hit ?? ok(null))
 +}
+diff --git a/src/demo/fixtures.en.json b/src/demo/fixtures.en.json
+new file mode 100644
+index 0000000..d5b792b
+--- /dev/null
++++ b/src/demo/fixtures.en.json
+@@ -0,0 +1,120 @@
++{
++  "INFA 監控後台": "INFA Monitoring Portal",
++  "TW 維運": "TW Operations",
++  "job列表": "List jobs",
++  "job创建": "Create job",
++  "job删除": "Delete job",
++  "job启动": "Start job",
++  "job移除": "Remove job",
++  "job编辑": "Edit job",
++  "job通过id获取": "Get job by ID",
++  "人力资源": "Human Resources",
++  "修改管理员": "Edit user",
++  "修改菜单": "Edit menu",
++  "修改角色": "Edit role",
++  "值班 Demo": "On-call Demo",
++  "停用": "Disabled",
++  "内容列表": "List articles",
++  "内容创建": "Create article",
++  "内容删除": "Delete article",
++  "内容编辑": "Edit article",
++  "内容通过id获取": "Get article by ID",
++  "分类列表": "List categories",
++  "分类创建": "Create category",
++  "分类删除": "Delete category",
++  "分类编辑": "Edit category",
++  "分类通过id获取": "Get category by ID",
++  "删除管理员": "Delete user",
++  "删除菜单": "Delete menu",
++  "删除角色": "Delete role",
++  "参数信息修改【参数配置】": "Update settings (configuration)",
++  "参数列表": "List settings",
++  "参数创建": "Create setting",
++  "参数删除": "Delete setting",
++  "参数编辑": "Edit setting",
++  "参数获取全部【配置使用】": "Get all settings (for configuration)",
++  "参数通过id获取": "Get setting by ID",
++  "女": "Female",
++  "字典数据列表": "List dictionary data",
++  "字典数据创建": "Create dictionary data",
++  "字典数据删除": "Delete dictionary data",
++  "字典数据编辑": "Edit dictionary data",
++  "字典数据通过code获取": "Get dictionary data by code",
++  "字典类型列表": "List dictionary types",
++  "字典类型创建": "Create dictionary type",
++  "字典类型删除": "Delete dictionary type",
++  "字典类型编辑": "Edit dictionary type",
++  "字典类型通过id获取": "Get dictionary type by ID",
++  "客服部": "Customer Service",
++  "岗位列表": "List positions",
++  "岗位创建": "Create position",
++  "岗位删除": "Delete position",
++  "岗位编辑": "Edit position",
++  "岗位通过id获取": "Get position by ID",
++  "接口列表": "List APIs",
++  "接口编辑": "Edit API",
++  "接口通过id获取": "Get API by ID",
++  "操作日志列表": "List operation logs",
++  "操作日志删除": "Delete operation log",
++  "操作日志通过id获取": "Get operation log by ID",
++  "文件删除": "Delete file",
++  "文件夹删除": "Delete folder",
++  "文件夹编辑": "Edit folder",
++  "文件编辑": "Edit file",
++  "新增管理员": "Add user",
++  "新增菜单": "Add menu",
++  "新增角色": "Add role",
++  "无": "None",
++  "显示": "Shown",
++  "未知": "Unknown",
++  "查询成功": "OK",
++  "查询管理员": "View users",
++  "查询菜单": "View menus",
++  "查询角色": "View roles",
++  "查询部门下拉树【角色权限-自定权限】": "Department tree (custom role permissions)",
++  "正常": "Active",
++  "测试工程师": "Test Engineer",
++  "爱拓科技": "Mootech",
++  "用戶管理": "Users",
++  "男": "Male",
++  "登录日志列表": "List login logs",
++  "登录日志删除": "Delete login log",
++  "登录日志通过id获取": "Get login log by ID",
++  "研发部": "R&D",
++  "管理员列表": "List users",
++  "管理员创建": "Create user",
++  "管理员删除": "Delete user",
++  "管理员编辑": "Edit user",
++  "管理员通过id获取": "Get user by ID",
++  "系統工具": "System Tools",
++  "系統設置": "System Settings",
++  "系统管理员": "System Administrator",
++  "编辑菜单": "Edit menu",
++  "获取成功": "OK",
++  "菜单列表": "List menus",
++  "菜单创建": "Create menu",
++  "菜单权限列表【角色配菜单使用】": "Menu permissions (for role menus)",
++  "菜单通过id获取": "Get menu by ID",
++  "行政区删除": "Delete region",
++  "角色列表": "List roles",
++  "角色创建": "Create role",
++  "角色删除": "Delete role",
++  "角色数据权限修改": "Update role data permissions",
++  "角色管理": "Roles",
++  "角色编辑": "Edit role",
++  "角色通过id获取": "Get role by ID",
++  "角色部门结构树【自定义数据权限】": "Role department tree (custom data permissions)",
++  "运维部": "Operations",
++  "退出ws【定时任务log】": "Close WebSocket (scheduled job log)",
++  "選單管理": "Menus",
++  "部门列表": "List departments",
++  "部门创建": "Create department",
++  "部门删除": "Delete department",
++  "部门编辑": "Edit department",
++  "部门通过id获取": "Get department by ID",
++  "链接ws【定时任务log】": "Open WebSocket (scheduled job log)",
++  "隐藏": "Hidden",
++  "首席执行官": "CEO",
++  "首席技术执行官": "CTO",
++  "首席运营官": "COO"
++}
+\ No newline at end of file
 diff --git a/src/demo/fixtures.json b/src/demo/fixtures.json
 new file mode 100644
 index 0000000..89dbbbe
@@ -2415,6 +2564,116 @@ index 0000000..49ef561
 +  demoLogin: 'Demo accounts: admin / 123456 or demo / demo1234',
 +  demoNotSaved: 'Demo: changes are not saved'
 +}
+diff --git a/src/lang/index.ts b/src/lang/index.ts
+index e729237..3e32eb3 100644
+--- a/src/lang/index.ts
++++ b/src/lang/index.ts
+@@ -2,7 +2,7 @@ import { createI18n } from 'vue-i18n'
+ import { shallowRef } from 'vue'
+ import elementZhCn from 'element-plus/es/locale/lang/zh-cn'
+ import zhCN from './zh-CN'
+-import { DEFAULT_LOCALE, fixedLocale, initialLocale, rememberLocale, type Locale } from './locales'
++import { DEFAULT_LOCALE, fixedLocale, initialLocale, rememberLocale, rememberStaffLocale, type Locale } from './locales'
+ 
+ /**
+  * The i18n instance, and the one function that changes language.
+@@ -80,6 +80,38 @@ export const setLocale = async(locale: Locale): Promise<void> => {
+ }
+ 
+ /** Called once at boot, before mount, so the first paint is already correct. */
+-export const setupI18n = (): Promise<void> => setLocale(initialLocale())
++export const setupI18n = (): Promise<void> => {
++  installLocaleShortcut()
++  return setLocale(initialLocale())
++}
+ 
+ export * from './locales'
++
++/**
++ * Staff shortcut: Ctrl + Alt + L toggles between English and Chinese.
++ *
++ * The demo is pinned to English for customers, so it has no visible switcher.
++ * The shortcut is for the people producing the site, and the choice is kept
++ * in this browser only, so a reload stays in the language they picked. Going
++ * back to the pinned language clears it again.
++ *
++ * The page reloads after switching: data already fetched (menus, names from
++ * the server) would otherwise stay in the old language until the next request.
++ *
++ * Matched on `code` rather than `key`: with Alt held, macOS turns L into "¬".
++ */
++let shortcutInstalled = false
++
++export const installLocaleShortcut = (): void => {
++  if (shortcutInstalled || typeof window === 'undefined') return
++  shortcutInstalled = true
++  window.addEventListener('keydown', (event) => {
++    if (!event.ctrlKey || !event.altKey || event.shiftKey || event.metaKey || event.code !== 'KeyL') return
++    event.preventDefault()
++    const next: Locale = currentLocale() === 'zh-CN' ? 'en-US' : 'zh-CN'
++    const pinned = fixedLocale()
++    rememberStaffLocale(pinned && next !== pinned ? next : undefined)
++    if (!pinned) rememberLocale(next)
++    window.location.reload()
++  })
++}
+diff --git a/src/lang/locales.ts b/src/lang/locales.ts
+index 0b9d577..0c1232a 100644
+--- a/src/lang/locales.ts
++++ b/src/lang/locales.ts
+@@ -21,6 +21,14 @@ export const DEFAULT_LOCALE: Locale = 'zh-CN'
+ 
+ export const STORAGE_KEY = 'locale'
+ 
++/**
++ * Where the staff shortcut (see shortcut.ts) keeps its language. Separate from
++ * STORAGE_KEY on purpose: it is the one choice allowed to beat a pinned build,
++ * so the people running the site can work in Chinese on a deployment whose
++ * visitors only ever see English.
++ */
++export const STAFF_STORAGE_KEY = 'infa-staff-locale'
++
+ export const isLocale = (value: unknown): value is Locale =>
+   LOCALES.some(locale => locale.value === value)
+ 
+@@ -75,8 +83,26 @@ export const rememberLocale = (locale: Locale): void => {
+   } catch { /* see storedLocale */ }
+ }
+ 
++/** The staff override, if one is set and is still a language we ship. */
++export const staffLocale = (): Locale | undefined => {
++  try {
++    const stored = localStorage.getItem(STAFF_STORAGE_KEY)
++    return isLocale(stored) ? stored : undefined
++  } catch {
++    return undefined
++  }
++}
++
++export const rememberStaffLocale = (locale: Locale | undefined): void => {
++  try {
++    if (locale) localStorage.setItem(STAFF_STORAGE_KEY, locale)
++    else localStorage.removeItem(STAFF_STORAGE_KEY)
++  } catch { /* see storedLocale */ }
++}
++
+ /**
+- * The language to start in: the one this build is fixed to, else an explicit
++ * The language to start in: the staff override, else the one this build is
++ * fixed to, else an explicit
+  * choice, else the browser's, else zh-CN.
+  *
+  * A fixed language outranks a stored choice on purpose. The deployment that
+@@ -90,6 +116,9 @@ export const rememberLocale = (locale: Locale): void => {
+  * user has ordered several languages.
+  */
+ export const initialLocale = (): Locale => {
++  const staff = staffLocale()
++  if (staff) return staff
++
+   const fixed = fixedLocale()
+   if (fixed) return fixed
+ 
 diff --git a/src/lang/zh-CN/index.ts b/src/lang/zh-CN/index.ts
 index b1f3389..f861dde 100644
 --- a/src/lang/zh-CN/index.ts
@@ -2455,6 +2714,28 @@ index 0000000..cb665e3
 +  demoLogin: '展示版帳號：admin / 123456 或 demo / demo1234',
 +  demoNotSaved: '展示版：變更不會被儲存'
 +}
+diff --git a/src/layout/components/Settings/index.vue b/src/layout/components/Settings/index.vue
+index af02e50..d203b82 100644
+--- a/src/layout/components/Settings/index.vue
++++ b/src/layout/components/Settings/index.vue
+@@ -9,7 +9,7 @@
+           <div class="setting-drawer-block-checbox-item" @click="handleTheme('light')">
+             <img src="@/assets/light.svg" alt="light">
+             <div v-if="themeStyle === 'light'" class="setting-drawer-block-checbox-selectIcon" style="display: block;">
+-              <i aria-label="图标: check" class="anticon anticon-check">
++              <i aria-hidden="true" class="anticon anticon-check">
+                 <svg viewBox="64 64 896 896" data-icon="check" width="1em" height="1em" :fill="theme" aria-hidden="true" focusable="false" class=""><path d="M912 190h-69.9c-9.8 0-19.1 4.5-25.1 12.2L404.7 724.5 207 474a32 32 0 0 0-25.1-12.2H112c-6.7 0-10.4 7.7-6.3 12.9l273.9 347c12.8 16.2 37.4 16.2 50.3 0l488.4-618.9c4.1-5.1.4-12.8-6.3-12.8z" />
+                 </svg>
+               </i>
+@@ -18,7 +18,7 @@
+           <div class="setting-drawer-block-checbox-item" @click="handleTheme('dark')">
+             <img src="@/assets/dark.svg" alt="dark">
+             <div v-if="themeStyle === 'dark'" class="setting-drawer-block-checbox-selectIcon" style="display: block;">
+-              <i aria-label="图标: check" class="anticon anticon-check">
++              <i aria-hidden="true" class="anticon anticon-check">
+                 <svg viewBox="64 64 896 896" data-icon="check" width="1em" height="1em" :fill="theme" aria-hidden="true" focusable="false" class=""><path d="M912 190h-69.9c-9.8 0-19.1 4.5-25.1 12.2L404.7 724.5 207 474a32 32 0 0 0-25.1-12.2H112c-6.7 0-10.4 7.7-6.3 12.9l273.9 347c12.8 16.2 37.4 16.2 50.3 0l488.4-618.9c4.1-5.1.4-12.8-6.3-12.8z" />
+                 </svg>
+               </i>
 diff --git a/src/settings.js b/src/settings.js
 index e130798..da81c25 100644
 --- a/src/settings.js
@@ -3112,7 +3393,7 @@ index d3dd4fa..a4962e8 100644
  
    test('a page the guard turned away is not reported as visited', async({ page }) => {
 diff --git a/tests/unit/lang/coverage.spec.ts b/tests/unit/lang/coverage.spec.ts
-index 3a7d9a3..dae3a21 100644
+index 3a7d9a3..333a8e6 100644
 --- a/tests/unit/lang/coverage.spec.ts
 +++ b/tests/unit/lang/coverage.spec.ts
 @@ -54,7 +54,6 @@ const KNOWN: Record<string, number> = {
@@ -3123,15 +3404,57 @@ index 3a7d9a3..dae3a21 100644
  
    // Fallback titles for the fixed routes. Both already carry a titleKey, so
    // these render only when the pack is missing the key.
-@@ -71,7 +70,7 @@ const KNOWN: Record<string, number> = {
+@@ -71,9 +70,8 @@ const KNOWN: Record<string, number> = {
    // Trailing `//` comments, mostly: SCSS design notes on the login page and
    // Chinese notes after code elsewhere. Overcounted rather than missed, which
    // is the safe direction for a ratchet.
 -  'src/views/login/index.vue': 11,
 +  'src/views/login/index.vue': 8,
    'src/views/profile/userAvatar.vue': 5,
-   'src/layout/components/Settings/index.vue': 2,
+-  'src/layout/components/Settings/index.vue': 2,
    'src/components/Share/DropdownMenu.vue': 1
+ }
+ 
+diff --git a/tests/unit/lang/locales.spec.ts b/tests/unit/lang/locales.spec.ts
+index 8e70a6d..66c64b3 100644
+--- a/tests/unit/lang/locales.spec.ts
++++ b/tests/unit/lang/locales.spec.ts
+@@ -2,8 +2,9 @@ import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest'
+ import { readdirSync } from 'node:fs'
+ import { resolve } from 'node:path'
+ import {
+-  LOCALES, DEFAULT_LOCALE, STORAGE_KEY,
+-  isLocale, matchLocale, storedLocale, rememberLocale, initialLocale, fixedLocale
++  LOCALES, DEFAULT_LOCALE, STORAGE_KEY, STAFF_STORAGE_KEY,
++  isLocale, matchLocale, storedLocale, rememberLocale, initialLocale, fixedLocale,
++  rememberStaffLocale
+ } from '@/lang/locales'
+ 
+ /**
+@@ -172,6 +173,23 @@ describe('initialLocale on a pinned build', () => {
+     vi.stubEnv('VUE_APP_LOCALE', 'en-US')
+     expect(initialLocale()).toBe('en-US')
+   })
++
++  it('gives way to the staff shortcut, and only to that', () => {
++    vi.stubEnv('VUE_APP_LOCALE', 'en-US')
++    rememberStaffLocale('zh-CN')
++    expect(localStorage.getItem(STAFF_STORAGE_KEY)).toBe('zh-CN')
++    expect(initialLocale()).toBe('zh-CN')
++
++    rememberStaffLocale(undefined)
++    expect(localStorage.getItem(STAFF_STORAGE_KEY)).toBeNull()
++    expect(initialLocale()).toBe('en-US')
++  })
++
++  it('ignores a staff value that is not a language we ship', () => {
++    vi.stubEnv('VUE_APP_LOCALE', 'en-US')
++    localStorage.setItem(STAFF_STORAGE_KEY, 'fr-FR')
++    expect(initialLocale()).toBe('en-US')
++  })
+ })
+ 
+ /**
 diff --git a/vite.config.mjs b/vite.config.mjs
 index 9cca6c2..d1a9782 100644
 --- a/vite.config.mjs
